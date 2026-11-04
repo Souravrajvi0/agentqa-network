@@ -23,11 +23,11 @@ const linkMeta: Record<string, string> = {
   admin: "Admin",
 };
 
-const navSections: { id: string; title: string; description: string; slugs: string[] }[] = [
-  { id: "command", title: "Command center", description: "Cycle status & priorities", slugs: ["dashboard"] },
-  { id: "testing", title: "QA execution", description: "Cases, workspace & runs", slugs: ["test-cases", "my-workspace", "team-board", "execution"] },
-  { id: "product", title: "Product context", description: "Design intent & change impact", slugs: ["design-decisions", "developer-changes", "defects"] },
-  { id: "platform", title: "Platform & agents", description: "Switch, readiness & admin", slugs: ["agents", "release-readiness", "admin"] },
+const navSections: { title: string; slugs: string[] }[] = [
+  { title: "Command", slugs: ["dashboard"] },
+  { title: "Testing", slugs: ["test-cases", "my-workspace", "team-board", "execution"] },
+  { title: "Product", slugs: ["design-decisions", "developer-changes", "defects"] },
+  { title: "Platform", slugs: ["agents", "release-readiness", "admin"] },
 ];
 
 export function AppLayout() {
@@ -137,12 +137,9 @@ export function AppLayout() {
           <NotificationBell />
           {selectedProjectId
             ? navSections.map((section) => (
-                <div key={section.id} className="nav-section">
-                  <div className="nav-section-head">
-                    <p className="nav-section-title">{section.title}</p>
-                    <p className="nav-section-desc">{section.description}</p>
-                  </div>
-                  <nav className="nav-section-links space-y-0.5">
+                <div key={section.title} className="nav-section">
+                  <p className="nav-section-label">{section.title}</p>
+                  <nav className="space-y-0.5">
                     {section.slugs.map((slug) => (
                       <NavLink
                         key={slug}
