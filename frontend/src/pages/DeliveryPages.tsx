@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { EmptyState, ErrorText, PageHeader, StatusBadge } from "../components/ui";
+import { EmptyState, ErrorText, GateBanner, PageHeader, StatusBadge } from "../components/ui";
 import { useProjectRole } from "../hooks/useProjectRole";
 import { canOverrideCiGate } from "../lib/roles";
 import { useAuthStore } from "../stores/auth";
@@ -61,6 +61,7 @@ export function DeliveryPipelinePage() {
   return (
     <div>
       <PageHeader
+        eyebrow="Command center"
         title="Delivery"
         subtitle="Development → design → CI → build → retest scope → QA → release"
         actions={
@@ -91,7 +92,7 @@ export function DeliveryPipelinePage() {
       ) : !data?.rows.length ? (
         <EmptyState title="No developer changes" description="Register a change to start the delivery workflow." />
       ) : (
-        <div className="card overflow-x-auto p-0">
+        <div className="table-shell p-0">
           <table className="w-full min-w-[960px] text-left text-[12px]">
             <thead className="border-b border-zinc-200/80 text-[10px] uppercase tracking-wider text-faint dark:border-white/10">
               <tr>
@@ -228,6 +229,13 @@ export function DeliveryDetailPage() {
         }
       />
       <ErrorText message={error} />
+
+      {data.ciGateBlocked && !data.ciOverride ? (
+        <GateBanner
+          title="QA held: CI gate is blocking handoff progress"
+          detail="Fix CI, or have a QA Lead record an explicit override. The failed CI run stays on the record."
+        />
+      ) : null}
 
       <div className="flex flex-wrap gap-1 border-b border-zinc-200/80 pb-2 dark:border-white/10">
         {detailTabs.map((t) => (
