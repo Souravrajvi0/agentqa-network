@@ -291,6 +291,11 @@
     opacity: 0.9;
   }
 
+  .metric-hint {
+    @apply mt-auto pt-3 text-[12px] leading-relaxed tracking-[-0.01em];
+    border-top: 1px solid var(--divider);
+  }
+
   .shell-header {
     @apply sticky top-0 z-30 backdrop-blur-xl;
     border-bottom: 1px solid var(--divider);

@@ -110,6 +110,27 @@ const metricAccentVar: Record<string, string> = {
   agent: "var(--metric-agent)",
 };
 
+/** Emphasize numbers and priority tokens in metric footnotes */
+function MetricHint({ text }: { text: string }) {
+  const tokens = text.split(/(\d+\s*\/\s*\d+|\d+|P\d+)/g).filter(Boolean);
+  return (
+    <p className="metric-hint">
+      {tokens.map((part, i) => {
+        const emphasized = /^\d+\s*\/\s*\d+$/.test(part) || /^\d+$/.test(part) || /^P\d+$/.test(part);
+        return emphasized ? (
+          <span key={i} className="font-semibold tabular-nums text-heading">
+            {part}
+          </span>
+        ) : (
+          <span key={i} className="text-label">
+            {part}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 export function MetricCard({
   label,
   value,
@@ -123,10 +144,10 @@ export function MetricCard({
 }) {
   return (
     <div
-      className="card metric-card flex min-h-[118px] flex-col justify-between"
+      className="card metric-card flex min-h-[128px] flex-col"
       style={{ ["--metric-accent" as string]: metricAccentVar[tone] }}
     >
-      <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+      <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
         <span
           className="h-1 w-1 shrink-0 rounded-sm"
           style={{ background: metricAccentVar[tone] }}
@@ -134,8 +155,8 @@ export function MetricCard({
         />
         {label}
       </p>
-      <p className="mt-3 text-[1.875rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-heading">{value}</p>
-      {hint ? <p className="mt-2.5 text-[11px] leading-snug text-muted">{hint}</p> : null}
+      <p className="mt-4 text-[2rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-heading">{value}</p>
+      {hint ? <MetricHint text={hint} /> : <div className="mt-auto" />}
     </div>
   );
 }
