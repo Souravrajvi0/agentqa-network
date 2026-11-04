@@ -31,10 +31,10 @@ export function NotificationBell() {
   return (
     <div className="relative mb-4">
       <details className="group">
-        <summary className="cursor-pointer list-none rounded-lg border border-slate-800 px-3 py-2 text-sm hover:bg-slate-900">
+        <summary className="cursor-pointer list-none rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300 hover:border-zinc-600">
           Notifications
           {unread.length ? (
-            <span className="ml-2 rounded-full bg-brand-500 px-2 py-0.5 text-xs text-white">{unread.length}</span>
+            <span className="ml-2 rounded-full bg-indigo-500/30 px-2 py-0.5 text-xs text-indigo-200">{unread.length}</span>
           ) : null}
         </summary>
         <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-2 shadow-xl">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, setToken } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
-import { PageHeader } from "../components/ui";
+import { ErrorText, PageHeader } from "../components/ui";
 
 export function LoginPage() {
   const [email, setEmail] = useState("qa.b@agentqa.demo");
@@ -28,22 +28,29 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-      <PageHeader title="Sign in" subtitle="Demo users seeded with password123" />
-      <form onSubmit={onSubmit} className="card space-y-3">
-        <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-        <input
-          className="input"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-        />
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-        <button className="btn-primary w-full" type="submit">
-          Continue
-        </button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold">AQ</div>
+          <h1 className="text-2xl font-semibold tracking-tight">AgentQA Network</h1>
+          <p className="mt-2 text-sm text-zinc-500">Collaborative QA command center · Switch-ready</p>
+        </div>
+        <form onSubmit={onSubmit} className="card space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">Email</label>
+            <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">Password</label>
+            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+          </div>
+          <ErrorText message={error} />
+          <button className="btn-primary w-full" type="submit">
+            Sign in to workspace
+          </button>
+          <p className="text-center text-[11px] text-zinc-600">Demo: password123 · Local / tunnel use only</p>
+        </form>
+      </div>
     </div>
   );
 }

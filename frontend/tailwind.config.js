@@ -3,12 +3,32 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+      },
       colors: {
-        brand: {
-          50: "#eef6ff",
-          500: "#2563eb",
-          700: "#1d4ed8",
-          900: "#1e3a8a",
+        canvas: "#18181b",
+        surface: "#27272a",
+        elevated: "#3f3f46",
+        hairline: "#52525b",
+        passed: "#10b981",
+        critical: "#f43f5e",
+        warning: "#f59e0b",
+        info: "#0284c7",
+        agent: "#8b5cf6",
+        human: "#14b8a6",
+      },
+      boxShadow: {
+        glow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 30px rgba(0,0,0,0.35)",
+      },
+      animation: {
+        pulseStripe: "pulseStripe 2s ease-in-out infinite",
+      },
+      keyframes: {
+        pulseStripe: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
         },
       },
     },
