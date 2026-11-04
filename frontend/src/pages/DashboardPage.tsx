@@ -18,6 +18,7 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title="Overview Dashboard"
+        greetUser
         subtitle={data?.activeCycle ? data.activeCycle.name : "No active cycle"}
         actions={
           data?.activeCycle ? (

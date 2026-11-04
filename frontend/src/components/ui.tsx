@@ -72,16 +72,28 @@ export function ErrorText({ message }: { message?: string | null }) {
   );
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  greetUser = false,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+  greetUser?: boolean;
+}) {
   const user = useAuthStore((s) => s.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] ?? "there";
 
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b pb-6" style={{ borderColor: "var(--divider)" }}>
       <div>
-        <p className="mb-2 text-[13px] text-label">
-          Hi, <span className="font-semibold text-heading">{firstName}</span>
-        </p>
+        {greetUser ? (
+          <p className="mb-2 text-[13px] text-label">
+            Hi, <span className="font-semibold text-heading">{firstName}</span>
+          </p>
+        ) : null}
         <h1 className="text-[1.5rem] font-semibold tracking-[-0.03em] text-heading">{title}</h1>
         {subtitle ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-label">{subtitle}</p> : null}
       </div>

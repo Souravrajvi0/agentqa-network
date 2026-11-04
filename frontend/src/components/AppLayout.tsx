@@ -81,25 +81,6 @@ export function AppLayout() {
             </div>
           </div>
 
-          <div className="hidden h-6 w-px shrink-0 md:block" style={{ backgroundColor: "var(--border-subtle)" }} />
-
-          <div className="flex min-w-0 shrink-0 items-center">
-            <select
-              className="input h-8 max-w-[120px] truncate py-0 text-[11px] font-medium text-heading sm:max-w-[200px]"
-              value={selectedProjectId ?? ""}
-              onChange={(e) => {
-                setSelectedProjectId(e.target.value);
-                navigate(`/projects/${e.target.value}/dashboard`);
-              }}
-            >
-              {(projectsData?.projects ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.key} · {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="pointer-events-none absolute inset-x-0 hidden justify-center px-[min(24rem,28vw)] md:flex">
             <div className="pointer-events-auto w-full max-w-md">
               <CommandTrigger onClick={() => setPaletteOpen(true)} />
