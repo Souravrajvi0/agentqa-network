@@ -39,6 +39,7 @@ const navByRole: Record<ProjectRole, string[]> = {
     "execution",
     "design-decisions",
     "defects",
+    "agents",
     "release-readiness",
   ],
   DEVELOPER: [
@@ -47,6 +48,7 @@ const navByRole: Record<ProjectRole, string[]> = {
     "design-decisions",
     "developer-changes",
     "defects",
+    "agents",
     "release-readiness",
   ],
   VIEWER: ["dashboard", "test-cases", "defects", "release-readiness", "design-decisions"],
@@ -82,6 +84,15 @@ export function defaultLandingPath(role: ProjectRole | null | undefined): string
     default:
       return "dashboard";
   }
+}
+
+export function canRegisterAgents(role: ProjectRole | null | undefined): boolean {
+  return (
+    role === "ADMINISTRATOR" ||
+    role === "QA_LEAD" ||
+    role === "QA_ENGINEER" ||
+    role === "DEVELOPER"
+  );
 }
 
 export function formatRoleLabel(role: ProjectRole): string {

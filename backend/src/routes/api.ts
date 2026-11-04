@@ -1286,7 +1286,12 @@ apiRouter.post(
   asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     const auth = await requireUserAuth(req);
-    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD", "DEVELOPER"]);
+    await requireProjectRole(auth.userId, projectId, [
+      "ADMINISTRATOR",
+      "QA_LEAD",
+      "QA_ENGINEER",
+      "DEVELOPER",
+    ]);
 
     const body = z
       .object({

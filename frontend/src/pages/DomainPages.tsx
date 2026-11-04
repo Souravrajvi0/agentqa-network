@@ -6,6 +6,7 @@ import { ErrorText, PageHeader, StatusBadge } from "../components/ui";
 import { invalidateProjectQueries, useTestingContext } from "../hooks/useTestingContext";
 import { useProjectRole } from "../hooks/useProjectRole";
 import { roleCanWriteDefects } from "../components/RequireProjectRole";
+import { canRegisterAgents } from "../lib/roles";
 
 export function DesignDecisionsPage() {
   const { projectId = "" } = useParams();
@@ -362,6 +363,7 @@ export function DefectsPage() {
 
 export function AgentsPage() {
   const { projectId = "" } = useParams();
+  const { role } = useProjectRole(projectId);
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -395,8 +397,16 @@ export function AgentsPage() {
 
   return (
     <div>
-      <PageHeader title="Agent Collaboration View" subtitle="Register agents and connect Switch + MCP" />
+      <PageHeader
+        title="Agent Collaboration"
+        subtitle="Register your own AgentQA agent · MCP API key · optional Switch identity"
+      />
       <ErrorText message={error} />
+      {!canRegisterAgents(role) ? (
+        <p className="mb-4 text-sm text-label">
+          View-only for your project role. QA engineers, developers, and leads can register agents.
+        </p>
+      ) : null}
       {createdKey ? (
         <div className="card mb-4 border border-amber-500/30 text-sm dark:border-amber-500/25">
           <p className="font-medium text-warning">Agent API key (copy now — shown once)</p>
@@ -404,6 +414,7 @@ export function AgentsPage() {
           <p className="mt-2 text-xs text-label">Set AGENTQA_AGENT_API_KEY for MCP and switch-agent-runner.</p>
         </div>
       ) : null}
+      {canRegisterAgents(role) ? (
       <section className="card mb-4 grid gap-2 md:grid-cols-2">
         <input className="input" placeholder="name (lowercase)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className="input" placeholder="Display name" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
@@ -417,6 +428,7 @@ export function AgentsPage() {
           Register AgentQA agent
         </button>
       </section>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card">
           <h2 className="mb-2 font-medium">Registered agents</h2>
