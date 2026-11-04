@@ -48,22 +48,22 @@ export function CommandPalette({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm" onClick={() => onOpenChange(false)}>
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-600/80 bg-zinc-900 shadow-xl shadow-black/40" onClick={(e) => e.stopPropagation()}>
-        <div className="border-b border-zinc-700/80 px-4 py-3">
+      <div className="w-full max-w-lg overflow-hidden rounded-sm border border-white/[0.1] bg-[#0f0f11] shadow-glow" onClick={(e) => e.stopPropagation()}>
+        <div className="border-b border-white/[0.06] px-4 py-3">
           <input
             autoFocus
-            className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500"
+            className="w-full bg-transparent text-[13px] outline-none placeholder:text-zinc-600"
             placeholder="Search views… (tests & defects search coming soon)"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <ul className="max-h-72 overflow-auto p-2">
+        <ul className="max-h-72 overflow-auto p-1.5">
           {filtered.map(([slug, label]) => (
             <li key={slug}>
               <button
                 type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800"
+                className="w-full rounded-sm px-3 py-2 text-left text-[13px] text-zinc-300 transition duration-150 hover:bg-white/[0.04]"
                 onClick={() => {
                   navigate(`/projects/${pid}/${slug}`);
                   onOpenChange(false);
@@ -75,7 +75,7 @@ export function CommandPalette({
             </li>
           ))}
         </ul>
-        <p className="border-t border-zinc-800 px-4 py-2 text-[11px] text-zinc-500">⌘K · Navigate workspace</p>
+        <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-600">⌘K · Navigate workspace</p>
       </div>
     </div>
   );
@@ -83,9 +83,13 @@ export function CommandPalette({
 
 export function CommandTrigger({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="hidden items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-600 md:flex">
+    <button
+      type="button"
+      onClick={onClick}
+      className="hidden h-8 items-center gap-2 rounded-sm border border-white/[0.08] bg-white/[0.02] px-3 text-[11px] text-zinc-500 transition duration-150 hover:border-white/[0.12] hover:bg-white/[0.04] md:flex"
+    >
       <span>Search & commands</span>
-      <kbd className="rounded border border-zinc-600 bg-zinc-800 px-1.5 font-mono text-[10px] text-zinc-400">⌘K</kbd>
+      <kbd className="rounded-sm border border-white/[0.1] bg-[#0a0a0c] px-1.5 font-mono text-[10px] text-zinc-500">⌘K</kbd>
     </button>
   );
 }
@@ -98,7 +102,10 @@ export function PresenceStack({ agents }: { agents: Array<{ displayName: string;
         <div
           key={a.displayName + i}
           title={`${a.displayName} (${a.agentType})`}
-          className={clsx("flex h-8 w-8 items-center justify-center rounded-full border-2 border-zinc-950 text-[10px] font-semibold text-white", colors[i % colors.length])}
+          className={clsx(
+            "flex h-7 w-7 items-center justify-center rounded-sm border border-[#09090b] text-[9px] font-semibold tracking-tight text-white shadow-sm",
+            colors[i % colors.length],
+          )}
         >
           {a.displayName.slice(0, 2).toUpperCase()}
         </div>

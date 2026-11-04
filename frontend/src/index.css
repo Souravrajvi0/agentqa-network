@@ -4,8 +4,9 @@
 
 @layer base {
   body {
-    @apply antialiased font-sans text-zinc-200;
+    @apply antialiased font-sans text-[13px] leading-relaxed text-zinc-300;
     background-color: #09090b;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   ::selection {
@@ -14,77 +15,104 @@
 }
 
 @layer components {
+  /* Premium surfaces: tight radius, hairline ring, minimal depth */
   .card {
-    @apply rounded-lg border border-white/[0.08] bg-[#111113] p-4;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+    @apply rounded-sm border border-white/[0.07] bg-[#0f0f11] p-5;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
   }
 
   .card-interactive {
-    @apply rounded-lg border border-white/[0.08] bg-[#111113] p-4 transition;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+    @apply rounded-sm border border-white/[0.07] bg-[#0f0f11] p-5 transition duration-150;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
   }
 
   .card-interactive:hover {
-    @apply border-white/[0.14] bg-[#141416];
+    @apply border-white/[0.12] bg-[#121214];
+  }
+
+  .list-row {
+    @apply rounded-sm border border-white/[0.06] bg-white/[0.015] px-4 py-3 transition duration-150;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .list-row:hover {
+    @apply border-white/[0.1] bg-white/[0.025];
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400;
+    @apply inline-flex h-8 items-center justify-center gap-2 rounded-sm px-3.5 text-[13px] font-medium tracking-tight transition duration-150 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-zinc-500;
   }
 
   .btn-primary {
-    @apply btn border border-white/90 bg-white text-[#09090b] hover:bg-zinc-200;
+    @apply btn border border-white bg-white text-[#09090b] shadow-sm shadow-black/20 hover:bg-zinc-100;
   }
 
   .btn-ghost {
-    @apply btn border border-white/[0.12] bg-transparent text-zinc-200 hover:border-white/20 hover:bg-white/[0.04];
+    @apply btn border border-white/[0.1] bg-transparent text-zinc-200 hover:border-white/[0.16] hover:bg-white/[0.03];
   }
 
   .btn-danger {
-    @apply btn border border-rose-500/25 bg-rose-950/40 text-rose-200 hover:bg-rose-950/70;
+    @apply btn border border-rose-500/20 bg-rose-950/30 text-rose-100 hover:border-rose-500/35 hover:bg-rose-950/50;
   }
 
   .input {
-    @apply w-full rounded-md border border-white/[0.1] bg-[#0c0c0e] px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-white/25 focus:ring-1 focus:ring-white/10;
+    @apply h-9 w-full rounded-sm border border-white/[0.08] bg-[#0a0a0c] px-3 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-white/20 focus:ring-1 focus:ring-white/[0.06];
   }
 
   .mono-id {
-    @apply font-mono text-xs tracking-tight text-zinc-400;
+    @apply font-mono text-[11px] font-medium tracking-tight text-zinc-500;
   }
 
   .shell-header {
-    @apply sticky top-0 z-30 border-b border-white/[0.06] bg-[#09090b]/90 backdrop-blur-md;
+    @apply sticky top-0 z-30 border-b border-white/[0.06] bg-[#09090b]/80 backdrop-blur-xl;
   }
 
   .nav-item {
-    @apply flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-200;
+    @apply flex h-8 items-center justify-between rounded-sm px-2.5 text-[13px] text-zinc-500 transition duration-150 hover:bg-white/[0.04] hover:text-zinc-200;
   }
 
   .nav-item-active {
-    @apply bg-white/[0.06] text-zinc-100;
+    @apply bg-white/[0.05] text-zinc-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)];
   }
 
   .border-subtle {
-    @apply border border-white/[0.08];
+    @apply border border-white/[0.07];
   }
 
   .surface-inset {
-    @apply rounded-md bg-[#0c0c0e];
+    @apply rounded-sm border border-white/[0.05] bg-[#0a0a0c];
   }
 
   .link-accent {
-    @apply text-zinc-200 underline-offset-2 hover:text-white hover:underline;
+    @apply font-medium text-zinc-100 underline-offset-4 hover:text-white hover:underline;
   }
 
   .table-shell {
-    @apply overflow-x-auto rounded-lg border border-white/[0.08];
+    @apply overflow-x-auto rounded-sm border border-white/[0.07];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   .table-shell thead {
-    @apply bg-white/[0.03] text-left text-zinc-500;
+    @apply border-b border-white/[0.06] bg-white/[0.02] text-left text-[11px] font-medium uppercase tracking-wider text-zinc-500;
+  }
+
+  .table-shell thead th {
+    @apply px-4 py-2.5 font-medium;
+  }
+
+  .table-shell tbody td {
+    @apply px-4 py-2.5;
   }
 
   .table-shell tbody tr {
-    @apply border-t border-white/[0.06] transition hover:bg-white/[0.02];
+    @apply border-t border-white/[0.04] transition duration-150 hover:bg-white/[0.02];
+  }
+
+  .chip {
+    @apply inline-flex h-5 items-center rounded-sm border border-white/[0.1] px-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400;
   }
 }

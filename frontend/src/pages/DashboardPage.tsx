@@ -30,19 +30,19 @@ export function DashboardPage() {
 
       {isLoading ? <p className="text-zinc-500">Loading telemetry…</p> : null}
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Testing progress" value={`${progressPct}%`} hint={`${stats.completed ?? 0} / ${stats.total ?? 0} completed`} tone="success" />
         <MetricCard label="Critical queue" value={data?.criticalQueue?.length ?? 0} hint="P0/P1 recommended next" tone="critical" />
         <MetricCard label="Active claims" value={stats.inProgress ?? 0} hint={`${stats.unassigned ?? 0} still unassigned`} tone="agent" />
         <MetricCard label="Failed runs" value={stats.failedExecutions ?? 0} hint={`${stats.blocked ?? 0} blocked assignments`} tone="warning" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-5 lg:grid-cols-5">
         <section className="card lg:col-span-3">
           <SectionTitle>Priority recommendations</SectionTitle>
           <ul className="space-y-3">
             {(data?.criticalQueue ?? []).map((item: any) => (
-              <li key={item.cycleCaseId} className="rounded-lg border border-zinc-700/60 bg-zinc-900/40 p-3">
+              <li key={item.cycleCaseId} className="list-row">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <MonoId>{item.testCase.externalId}</MonoId>
@@ -75,7 +75,7 @@ export function DashboardPage() {
             <SectionTitle>Developer changes</SectionTitle>
             <ul className="space-y-2 text-sm">
               {(data?.recentChanges ?? []).map((c: any) => (
-                <li key={c.id} className="rounded-lg border border-zinc-700/50 p-2">
+                <li key={c.id} className="list-row py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-zinc-200">{c.title}</p>
                     <StatusBadge value={c.urgency} />

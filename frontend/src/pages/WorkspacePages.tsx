@@ -60,7 +60,7 @@ export function MyWorkspacePage() {
           <h2 className="mb-3 font-medium">My assignments</h2>
           <ul className="space-y-3 text-sm">
             {(data?.assignments ?? []).map((a: any) => (
-              <li key={a.id} className="rounded-lg border border-white/[0.08] p-3">
+              <li key={a.id} className="list-row">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{a.testCycleCase.testCase.externalId}</p>
                   <StatusBadge value={a.status} />
@@ -110,7 +110,7 @@ export function MyWorkspacePage() {
           <h2 className="mb-3 font-medium">Recommended next tests</h2>
           <ul className="space-y-2 text-sm">
             {(data?.recommended ?? []).map((item: any) => (
-              <li key={item.cycleCaseId} className="rounded-lg border border-white/[0.08] p-3">
+              <li key={item.cycleCaseId} className="list-row">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{item.testCase.externalId}</p>
@@ -163,7 +163,7 @@ export function TeamBoardPage() {
           <h2 className="mb-3 font-medium">{data?.cycle?.name ?? "Cycle"}</h2>
           <ul className="space-y-2 text-sm">
             {(data?.cases ?? []).map((c: any) => (
-              <li key={c.id} className="flex items-center justify-between border-b border-white/[0.08] py-2">
+              <li key={c.id} className="list-row flex items-center justify-between gap-4 py-2.5">
                 <div>
                   <p className="font-medium">{c.testCase.externalId}</p>
                   <p className="text-zinc-400">{c.testCase.title}</p>
@@ -182,7 +182,7 @@ export function TeamBoardPage() {
           <h2 className="mb-3 font-medium">Agents</h2>
           <ul className="space-y-2 text-sm">
             {(data?.agents ?? []).map((a: any) => (
-              <li key={a.id} className="rounded border border-white/[0.08] p-2">
+              <li key={a.id} className="list-row py-2.5">
                 <p className="font-medium">{a.displayName}</p>
                 <p className="text-xs text-zinc-400">
                   {a.agentType} · owner {a.owner.name}

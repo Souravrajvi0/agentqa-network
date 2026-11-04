@@ -3,6 +3,12 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      borderRadius: {
+        DEFAULT: "4px",
+        sm: "3px",
+        md: "4px",
+        lg: "6px",
+      },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
@@ -20,7 +26,7 @@ export default {
         human: "#d4d4d8",
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 30px rgba(0,0,0,0.35)",
+        glow: "0 0 0 1px rgba(255,255,255,0.07), 0 20px 50px rgba(0,0,0,0.5)",
       },
       animation: {
         pulseStripe: "pulseStripe 2s ease-in-out infinite",
