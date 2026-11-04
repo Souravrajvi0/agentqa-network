@@ -77,11 +77,13 @@ export function PageHeader({
   subtitle,
   actions,
   greetUser = false,
+  eyebrow,
 }: {
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
   greetUser?: boolean;
+  eyebrow?: string;
 }) {
   const user = useAuthStore((s) => s.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] ?? "there";
@@ -89,15 +91,30 @@ export function PageHeader({
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b pb-6" style={{ borderColor: "var(--divider)" }}>
       <div>
+        {eyebrow ? <p className="eyebrow mb-2">{eyebrow}</p> : null}
         {greetUser ? (
           <p className="mb-2 text-[13px] text-label">
             Hi, <span className="font-semibold text-heading">{firstName}</span>
           </p>
         ) : null}
-        <h1 className="text-[1.5rem] font-semibold tracking-[-0.03em] text-heading">{title}</h1>
-        {subtitle ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-label">{subtitle}</p> : null}
+        <h1 className="font-display text-[1.65rem] font-bold tracking-[-0.03em] text-heading lg:text-[1.85rem]">{title}</h1>
+        {subtitle ? <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-label">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+export function GateBanner({ title, detail }: { title: string; detail?: string }) {
+  return (
+    <div className="gate-banner mb-6" role="status">
+      <span className="text-lg" aria-hidden>
+        ⏸
+      </span>
+      <div>
+        <p className="font-semibold text-heading">{title}</p>
+        {detail ? <p className="mt-0.5 text-[12px] font-normal text-label">{detail}</p> : null}
+      </div>
     </div>
   );
 }
