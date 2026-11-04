@@ -73,22 +73,23 @@ export function ErrorText({ message }: { message?: string | null }) {
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b pb-5" style={{ borderColor: "var(--divider)" }}>
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b pb-6" style={{ borderColor: "var(--divider)" }}>
       <div>
-        <h1 className="text-[1.375rem] font-semibold tracking-[-0.02em] text-heading">{title}</h1>
-        {subtitle ? <p className="mt-1.5 max-w-2xl text-[13px] text-label">{subtitle}</p> : null}
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Workspace</p>
+        <h1 className="text-[1.5rem] font-semibold tracking-[-0.03em] text-heading">{title}</h1>
+        {subtitle ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-label">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
 
-const metricDot: Record<string, string> = {
-  neutral: "bg-zinc-500",
-  success: "bg-emerald-500",
-  critical: "bg-rose-500",
-  warning: "bg-amber-500",
-  agent: "bg-zinc-400",
+const metricAccentVar: Record<string, string> = {
+  neutral: "var(--metric-neutral)",
+  success: "var(--metric-success)",
+  critical: "var(--metric-critical)",
+  warning: "var(--metric-warning)",
+  agent: "var(--metric-agent)",
 };
 
 export function MetricCard({
@@ -103,19 +104,28 @@ export function MetricCard({
   tone?: "neutral" | "success" | "critical" | "warning" | "agent";
 }) {
   return (
-    <div className="card flex flex-col justify-between">
-      <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
-        <span className={clsx("h-1 w-1 shrink-0 rounded-sm", metricDot[tone])} aria-hidden />
+    <div
+      className="card metric-card flex min-h-[118px] flex-col justify-between"
+      style={{ ["--metric-accent" as string]: metricAccentVar[tone] }}
+    >
+      <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+        <span
+          className="h-1 w-1 shrink-0 rounded-sm"
+          style={{ background: metricAccentVar[tone] }}
+          aria-hidden
+        />
         {label}
       </p>
-      <p className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-heading">{value}</p>
-      {hint ? <p className="mt-2 text-[11px] text-muted">{hint}</p> : null}
+      <p className="mt-3 text-[1.875rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-heading">{value}</p>
+      {hint ? <p className="mt-2.5 text-[11px] leading-snug text-muted">{hint}</p> : null}
     </div>
   );
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{children}</h2>
+    <div className="section-heading">
+      <h2>{children}</h2>
+    </div>
   );
 }

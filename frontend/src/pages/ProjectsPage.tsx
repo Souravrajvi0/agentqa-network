@@ -15,7 +15,7 @@ export function ProjectsPage() {
   });
 
   return (
-    <div className="relative mx-auto min-h-screen max-w-4xl bg-canvas p-6 lg:p-10">
+    <div className="relative mx-auto min-h-screen max-w-4xl app-canvas p-6 lg:p-10">
       <div className="absolute right-4 top-4 lg:right-10 lg:top-10">
         <ThemeToggle />
       </div>

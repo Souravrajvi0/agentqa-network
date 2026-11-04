@@ -29,7 +29,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-canvas p-6">
+    <div className="relative flex min-h-screen items-center justify-center app-canvas p-6">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
@@ -39,7 +39,7 @@ export function LoginPage() {
           <h1 className="text-[1.375rem] font-semibold tracking-[-0.02em] text-heading">AgentQA Network</h1>
           <p className="mt-2 text-[13px] text-label">Collaborative QA command center · Switch-ready</p>
         </div>
-        <form onSubmit={onSubmit} className="card space-y-4">
+        <form onSubmit={onSubmit} className="card-elevated space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-label">Email</label>
             <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
