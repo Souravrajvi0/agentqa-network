@@ -6,6 +6,7 @@ type PipelineFilters = {
   status?: string;
   ciStatus?: string;
   blocked?: boolean;
+  q?: string;
   page?: number;
   pageSize?: number;
 };
@@ -63,6 +64,12 @@ export async function getDeliveryPipeline(projectId: string, filters: PipelineFi
       const override = latestCi
         ? await prisma.ciGateOverride.findFirst({ where: { projectId, ciRunId: latestCi.id } })
         : null;
+      const overrideActor = override
+        ? await prisma.user.findUnique({
+            where: { id: override.actorUserId },
+            select: { id: true, name: true, email: true },
+          })
+        : null;
       const timeline = await prisma.deliveryTimelineEvent.findMany({
         where: { projectId, changeId: change.id },
         orderBy: { createdAt: "asc" },
@@ -100,7 +107,7 @@ export async function getDeliveryPipeline(projectId: string, filters: PipelineFi
         },
         latestCi,
         ciGateBlocked: latestCi ? ciBlocksQa(latestCi) && !override : false,
-        ciOverride: override,
+        ciOverride: override ? { ...override, actor: overrideActor } : null,
         approvedScope,
         handoff,
         defectCount,
@@ -118,6 +125,15 @@ export async function getDeliveryPipeline(projectId: string, filters: PipelineFi
   }
   if (filters.blocked) {
     filteredRows = filteredRows.filter((r) => r.ciGateBlocked || r.handoff?.status === "BLOCKED");
+  }
+  if (filters.q) {
+    const q = filters.q.toLowerCase();
+    filteredRows = filteredRows.filter(
+      (r) =>
+        r.change.title.toLowerCase().includes(q) ||
+        r.change.description?.toLowerCase().includes(q) ||
+        r.change.author.name.toLowerCase().includes(q),
+    );
   }
 
   return { rows: filteredRows, total, page, pageSize };
@@ -150,11 +166,12 @@ export async function getDeliveryDetail(projectId: string, changeId: string) {
   return { ...row, scopes, handoffs, ciHistory, designs };
 }
 
-export async function getQaInbox(projectId: string, status?: string) {
+export async function getQaInbox(projectId: string, status?: string, assigneeUserId?: string) {
   const handoffs = await prisma.qAHandoff.findMany({
     where: {
       projectId,
       ...(status ? { status: status as any } : { status: { in: ["PENDING", "ACCEPTED", "IN_PROGRESS", "BLOCKED"] } }),
+      ...(assigneeUserId ? { assignedToUserId: assigneeUserId } : {}),
     },
     include: {
       developerChange: { include: { author: true, feature: true } },
@@ -164,5 +181,16 @@ export async function getQaInbox(projectId: string, status?: string) {
     },
     orderBy: { createdAt: "desc" },
   });
-  return { handoffs };
+  const enriched = await Promise.all(
+    handoffs.map(async (h) => ({
+      ...h,
+      assignedToUser: h.assignedToUserId
+        ? await prisma.user.findUnique({
+            where: { id: h.assignedToUserId },
+            select: { id: true, name: true, email: true },
+          })
+        : null,
+    })),
+  );
+  return { handoffs: enriched };
 }

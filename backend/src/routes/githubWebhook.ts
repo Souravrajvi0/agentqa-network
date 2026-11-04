@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { mapGitHubWorkflowStatus, upsertCiRunFromGitHub } from "../services/ciRuns.js";
 import { registerWebhookDelivery } from "../services/webhookDeliveries.js";
+import { markGitHubWebhookReceived } from "../services/githubIntegration.js";
 
 export function verifyGitHubSignature(secret: string, rawBody: Buffer, signatureHeader: string | undefined): boolean {
   if (!signatureHeader?.startsWith("sha256=")) return false;
@@ -51,6 +52,7 @@ githubWebhookRouter.post(
     }
 
     if (!verifyGitHubSignature(integration.webhookSecret, rawBody, signature)) {
+      await markGitHubWebhookReceived(integration.projectId, false, "Invalid signature");
       return res.status(401).json({ error: "Invalid signature", code: "UNAUTHORIZED" });
     }
 
@@ -88,6 +90,8 @@ githubWebhookRouter.post(
       completedAt: run.updated_at ? new Date(run.updated_at) : undefined,
       metadata: { runNumber: run.run_number, event: payload.action, source: "github_webhook" },
     });
+
+    await markGitHubWebhookReceived(integration.projectId, true);
 
     res.json({ ok: true });
   }),

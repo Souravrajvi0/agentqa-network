@@ -6,6 +6,7 @@ import { ciBlocksQa } from "./ciRuns.js";
 import { publishProjectEvent } from "../ws/hub.js";
 import { createNotification } from "./notifications.js";
 import { recordAudit } from "./audit.js";
+import { notifySwitchDeliveryEvent } from "./switchNotifications.js";
 
 export async function proposeRetestScope(params: {
   projectId: string;
@@ -126,9 +127,10 @@ export async function approveRetestScope(params: {
         type: "ASSIGNMENT",
         title: "QA handoff ready",
         body: change.title,
-        linkPath: `/projects/${params.projectId}/qa-inbox`,
+        linkPath: `/projects/${params.projectId}/qa-inbox/${handoff!.id}`,
       });
     }
+    void notifySwitchDeliveryEvent(params.projectId, "QA handoff created", change.title, "handoff.created");
   }
 
   await recordDeliveryEvent({
@@ -142,6 +144,12 @@ export async function approveRetestScope(params: {
   });
 
   publishProjectEvent(params.projectId, "delivery.updated", { changeId: change.id });
+  void notifySwitchDeliveryEvent(
+    params.projectId,
+    blocked ? "Retest scope approved (QA blocked by CI)" : "Retest scope approved",
+    change.title,
+    "retest_scope.approved",
+  );
   return { scope: approved, handoff, ciBlocked: blocked };
 }
 
@@ -194,6 +202,14 @@ export async function createCiGateOverride(params: {
     entityType: "CiGateOverride",
     entityId: override.id,
   });
+
+  publishProjectEvent(params.projectId, "delivery.updated", { changeId: params.developerChangeId });
+  void notifySwitchDeliveryEvent(
+    params.projectId,
+    "CI gate overridden",
+    `CI remains ${ciRun.conclusion ?? ciRun.status}: ${params.reason}`,
+    "ci.failed",
+  );
 
   return override;
 }

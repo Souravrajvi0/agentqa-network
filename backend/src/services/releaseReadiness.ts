@@ -125,8 +125,17 @@ export async function evaluateReleaseReadiness(projectId: string) {
     ciGate: {
       passed: ciGatePassed,
       blocked: ciBlocked,
+      failed: latestCi?.conclusion === "FAILURE" || latestCi?.conclusion === "CANCELLED",
+      overridden: Boolean(ciOverride),
       run: latestCi,
       override: ciOverride,
+      summary: ciBlocked
+        ? `CI failed or running — QA blocked until override or green CI`
+        : ciOverride
+          ? `CI ${latestCi?.conclusion ?? "FAILED"} — QA gate overridden`
+          : latestCi?.conclusion === "SUCCESS"
+            ? "CI passed"
+            : "CI status unknown",
     },
     qaGate: {
       passed: qaGatePassed,
