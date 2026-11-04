@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
+import { api } from "../lib/api";
+import { navSlugsForRole } from "../lib/roles";
+import { useProjectRole } from "../hooks/useProjectRole";
 
 const NAV = [
   ["dashboard", "Overview Dashboard"],
@@ -16,6 +20,14 @@ const NAV = [
   ["admin", "Administration"],
 ] as const;
 
+type SearchResults = {
+  testCases: Array<{ id: string; externalId: string; title: string }>;
+  defects: Array<{ id: string; externalId: string; summary: string }>;
+  changes: Array<{ id: string; title: string }>;
+  knowledge: Array<{ id: string; title: string }>;
+  members: Array<{ user: { name: string; email: string } }>;
+};
+
 export function CommandPalette({
   projectId,
   open,
@@ -29,6 +41,8 @@ export function CommandPalette({
   const navigate = useNavigate();
   const params = useParams();
   const pid = projectId ?? params.projectId ?? "";
+  const { role } = useProjectRole(pid);
+  const allowedSlugs = navSlugsForRole(role ?? undefined);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -42,24 +56,98 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
+  const { data: searchData } = useQuery({
+    queryKey: ["search", pid, q],
+    queryFn: () =>
+      api<{ results: SearchResults }>(`/api/projects/${pid}/search?q=${encodeURIComponent(q)}`),
+    enabled: open && Boolean(pid) && q.trim().length >= 2,
+  });
+
   if (!open || !pid) return null;
 
-  const filtered = NAV.filter(([, label]) => label.toLowerCase().includes(q.toLowerCase()));
+  const filteredNav = NAV.filter(
+    ([slug, label]) => allowedSlugs.includes(slug) && label.toLowerCase().includes(q.toLowerCase()),
+  );
+  const results = searchData?.results;
+  const hasEntityResults =
+    q.trim().length >= 2 &&
+    results &&
+    (results.testCases.length ||
+      results.defects.length ||
+      results.changes.length ||
+      results.knowledge.length ||
+      results.members.length);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh] backdrop-blur-sm" style={{ backgroundColor: "var(--overlay)" }} onClick={() => onOpenChange(false)}>
-      <div className="w-full max-w-lg overflow-hidden rounded-sm border-theme bg-panel shadow-glow" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh] backdrop-blur-sm"
+      style={{ backgroundColor: "var(--overlay)" }}
+      onClick={() => onOpenChange(false)}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-sm border-theme bg-panel shadow-glow"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="border-b px-4 py-3" style={{ borderColor: "var(--divider)" }}>
           <input
             autoFocus
             className="w-full bg-transparent text-[13px] text-heading outline-none placeholder:text-muted"
-            placeholder="Search views… (tests & defects search coming soon)"
+            placeholder="Search tests, defects, changes, knowledge, members…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <ul className="max-h-72 overflow-auto p-1.5">
-          {filtered.map(([slug, label]) => (
+        <ul className="max-h-80 overflow-auto p-1.5">
+          {hasEntityResults ? (
+            <>
+              {results!.testCases.map((tc) => (
+                <li key={tc.id}>
+                  <button
+                    type="button"
+                    className="w-full rounded-sm px-3 py-2 text-left text-[13px] hover:bg-[var(--bg-hover)]"
+                    onClick={() => {
+                      navigate(`/projects/${pid}/test-cases/${tc.id}`);
+                      onOpenChange(false);
+                    }}
+                  >
+                    <span className="text-label">Test · </span>
+                    {tc.externalId} — {tc.title}
+                  </button>
+                </li>
+              ))}
+              {results!.defects.map((d) => (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    className="w-full rounded-sm px-3 py-2 text-left text-[13px] hover:bg-[var(--bg-hover)]"
+                    onClick={() => {
+                      navigate(`/projects/${pid}/defects`);
+                      onOpenChange(false);
+                    }}
+                  >
+                    <span className="text-label">Defect · </span>
+                    {d.externalId} — {d.summary}
+                  </button>
+                </li>
+              ))}
+              {results!.changes.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className="w-full rounded-sm px-3 py-2 text-left text-[13px] hover:bg-[var(--bg-hover)]"
+                    onClick={() => {
+                      navigate(`/projects/${pid}/developer-changes`);
+                      onOpenChange(false);
+                    }}
+                  >
+                    <span className="text-label">Change · </span>
+                    {c.title}
+                  </button>
+                </li>
+              ))}
+            </>
+          ) : null}
+          {filteredNav.map(([slug, label]) => (
             <li key={slug}>
               <button
                 type="button"
@@ -70,12 +158,18 @@ export function CommandPalette({
                   setQ("");
                 }}
               >
+                <span className="text-faint mr-2">View</span>
                 {label}
               </button>
             </li>
           ))}
+          {!filteredNav.length && !hasEntityResults ? (
+            <li className="px-3 py-4 text-sm text-muted">No matches — try another keyword.</li>
+          ) : null}
         </ul>
-        <p className="border-t px-4 py-2 text-[10px] uppercase tracking-wider text-faint" style={{ borderColor: "var(--divider)" }}>⌘K · Navigate workspace</p>
+        <p className="border-t px-4 py-2 text-[10px] uppercase tracking-wider text-faint" style={{ borderColor: "var(--divider)" }}>
+          ⌘K · Global search + navigation
+        </p>
       </div>
     </div>
   );
@@ -91,7 +185,7 @@ export function CommandTrigger({ onClick, className }: { onClick: () => void; cl
         className,
       )}
     >
-      <span className="truncate">Search & commands</span>
+      <span className="truncate">Search tests, defects, views…</span>
       <kbd className="surface-inset shrink-0 px-1.5 py-0.5 font-mono text-[10px] text-faint">⌘K</kbd>
     </button>
   );

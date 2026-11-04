@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireProjectRole, requireUser, resolveAuth } from "../lib/auth.js";
-import { ForbiddenError, NotFoundError } from "../lib/errors.js";
+import { ForbiddenError, NotFoundError, ConflictError } from "../lib/errors.js";
 import { refreshCyclePriorities, getPrioritizedQueue } from "../services/prioritization.js";
 import {
   assignAssignmentByLead,
@@ -12,6 +12,8 @@ import {
   releaseAssignment,
 } from "../services/assignments.js";
 import { getProjectHealthSummary } from "../services/projectStats.js";
+import { enrichChanges, transitionDeveloperChange } from "../services/developerChanges.js";
+import { getSwitchIntegrationStatus, searchProjectEntities } from "../services/search.js";
 import { runAutomatedTest } from "../services/playwrightRunner.js";
 import { notifyProjectLeads, createNotification } from "../services/notifications.js";
 import { notifySwitchCollaboration } from "../services/switch.js";
@@ -577,7 +579,14 @@ apiRouter.get(
       ? (activeCycle.release.builds.find((b) => b.isCurrent) ?? activeCycle.release.builds[0] ?? null)
       : null;
 
-    res.json({ activeCycle, currentBuild, environments, testCases });
+    res.json({
+      activeCycle: activeCycle
+        ? { id: activeCycle.id, name: activeCycle.name, releaseId: activeCycle.releaseId }
+        : null,
+      currentBuild,
+      environments,
+      testCases,
+    });
   }),
 );
 
@@ -636,7 +645,12 @@ apiRouter.get(
       include: { owner: { select: { name: true } }, activities: { take: 3, orderBy: { createdAt: "desc" } } },
     });
 
-    res.json({ cycle: activeCycle, cases, agents });
+    const qaMembers = await prisma.projectMember.findMany({
+      where: { projectId, role: { in: ["QA_ENGINEER", "QA_LEAD", "ADMINISTRATOR"] } },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+
+    res.json({ cycle: activeCycle, cases, agents, qaMembers });
   }),
 );
 
@@ -839,15 +853,48 @@ apiRouter.post(
 );
 
 apiRouter.get(
+  "/projects/:projectId/search",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    await authProject(req, projectId);
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const results = await searchProjectEntities(projectId, q);
+    res.json({ query: q, results });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId/audit-events",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD"]);
+    const events = await prisma.auditEvent.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: { user: { select: { name: true, email: true } } },
+    });
+    res.json({ events });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId/switch-status",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    await authProject(req, projectId);
+    const status = await getSwitchIntegrationStatus(projectId);
+    res.json(status);
+  }),
+);
+
+apiRouter.get(
   "/projects/:projectId/developer-changes",
   asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     await authProject(req, projectId);
-    const changes = await prisma.developerChangeRequest.findMany({
-      where: { projectId },
-      include: { author: { select: { name: true } }, release: true, build: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const changes = await enrichChanges(projectId);
     res.json({ changes });
   }),
 );
@@ -873,14 +920,19 @@ apiRouter.post(
       })
       .parse(req.body);
 
+    const activeRelease = await prisma.release.findFirst({
+      where: { projectId, status: "ACTIVE" },
+      include: { builds: { where: { isCurrent: true }, take: 1 } },
+    });
+
     const change = await prisma.developerChangeRequest.create({
       data: {
         projectId,
         authorUserId: auth.userId,
         title: body.title,
         description: body.description,
-        releaseId: body.releaseId,
-        buildId: body.buildId,
+        releaseId: body.releaseId ?? activeRelease?.id,
+        buildId: body.buildId ?? activeRelease?.builds[0]?.id,
         featureId: body.featureId,
         urgency: body.urgency,
         impactedTestIds: body.impactedTestIds,
@@ -909,24 +961,90 @@ apiRouter.post(
   }),
 );
 
+apiRouter.patch(
+  "/projects/:projectId/developer-changes/:changeId",
+  asyncHandler(async (req, res) => {
+    const { projectId, changeId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["DEVELOPER", "ADMINISTRATOR", "QA_LEAD"]);
+
+    const existing = await prisma.developerChangeRequest.findFirst({
+      where: { id: changeId, projectId },
+    });
+    if (!existing) throw new NotFoundError("Change not found");
+
+    const body = z
+      .object({
+        title: z.string().min(1).optional(),
+        description: z.string().min(1).optional(),
+        impactedTestIds: z.array(z.string()).optional(),
+        missingCoverage: z.string().optional(),
+      })
+      .parse(req.body);
+
+    if (existing.status !== "DRAFT" && existing.status !== "SUBMITTED") {
+      throw new ConflictError("Only draft or submitted changes can be edited");
+    }
+
+    const member = await prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: auth.userId } },
+    });
+    if (
+      existing.status === "DRAFT" &&
+      existing.authorUserId !== auth.userId &&
+      member?.role !== "ADMINISTRATOR"
+    ) {
+      throw new ForbiddenError("Only the author can edit a draft");
+    }
+    if (existing.status === "SUBMITTED" && !["QA_LEAD", "ADMINISTRATOR"].includes(member?.role ?? "")) {
+      throw new ForbiddenError("Only QA leads can adjust submitted impact scope");
+    }
+
+    const change = await prisma.developerChangeRequest.update({
+      where: { id: changeId },
+      data: body,
+    });
+    res.json({ change });
+  }),
+);
+
+apiRouter.post(
+  "/projects/:projectId/developer-changes/:changeId/transition",
+  asyncHandler(async (req, res) => {
+    const { projectId, changeId } = req.params;
+    const auth = await requireUser(req);
+    const body = z
+      .object({
+        status: z.enum(["SUBMITTED", "APPROVED", "REJECTED", "COMPLETED"]),
+        impactedTestIds: z.array(z.string()).optional(),
+      })
+      .parse(req.body);
+
+    const change = await transitionDeveloperChange({
+      projectId,
+      changeId,
+      actorUserId: auth.userId,
+      toStatus: body.status,
+      impactedTestIds: body.impactedTestIds,
+    });
+    res.json({ change });
+  }),
+);
+
 apiRouter.post(
   "/projects/:projectId/developer-changes/:changeId/approve",
   asyncHandler(async (req, res) => {
     const { projectId, changeId } = req.params;
     const auth = await requireUser(req);
-    await requireProjectRole(auth.userId, projectId, ["QA_LEAD", "ADMINISTRATOR"]);
+    const body = z.object({ impactedTestIds: z.array(z.string()).optional() }).parse(req.body ?? {});
 
-    const change = await prisma.developerChangeRequest.update({
-      where: { id: changeId },
-      data: { status: "APPROVED", approvedByUserId: auth.userId },
+    const change = await transitionDeveloperChange({
+      projectId,
+      changeId,
+      actorUserId: auth.userId,
+      toStatus: "APPROVED",
+      impactedTestIds: body.impactedTestIds,
     });
-
-    const activeCycle = await prisma.testCycle.findFirst({ where: { projectId, status: "ACTIVE" } });
-    if (activeCycle) {
-      await refreshCyclePriorities(activeCycle.id);
-    }
-
-    publishProjectEvent(projectId, "developer.change.approved", { change });
     res.json({ change });
   }),
 );
@@ -1360,5 +1478,147 @@ agentToolsRouter.post(
     assertAgentCapability(agent, "claimTests");
     const assignment = await claimAssignment({ assignmentId: body.assignmentId, agentId: auth.agentId });
     res.json({ assignment });
+  }),
+);
+
+agentToolsRouter.get(
+  "/project-context",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string; userId?: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({
+      where: { id: auth.agentId },
+      include: { project: true, owner: { select: { email: true, name: true } } },
+    });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
+    const health = await getProjectHealthSummary(agent.projectId);
+    res.json({
+      project: agent.project,
+      agent: { id: agent.id, displayName: agent.displayName, agentType: agent.agentType },
+      owner: agent.owner,
+      health,
+    });
+  }),
+);
+
+agentToolsRouter.get(
+  "/test-cases",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const testCases = await prisma.testCase.findMany({
+      where: {
+        projectId: agent.projectId,
+        archived: false,
+        ...(q
+          ? {
+              OR: [
+                { title: { contains: q, mode: "insensitive" } },
+                { externalId: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      take: 50,
+      orderBy: { externalId: "asc" },
+    });
+    res.json({ testCases });
+  }),
+);
+
+agentToolsRouter.get(
+  "/defects",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
+    const defects = await prisma.defect.findMany({
+      where: { projectId: agent.projectId },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+    res.json({ defects });
+  }),
+);
+
+agentToolsRouter.post(
+  "/defects",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string; userId?: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "recordResults");
+    const body = z
+      .object({
+        summary: z.string().min(1),
+        description: z.string().optional(),
+        testCaseId: z.string().optional(),
+        priority: z.enum(["P0", "P1", "P2", "P3"]).default("P2"),
+      })
+      .parse(req.body);
+    const count = await prisma.defect.count({ where: { projectId: agent.projectId } });
+    const defect = await prisma.defect.create({
+      data: {
+        projectId: agent.projectId,
+        externalId: `DEF-${String(count + 1).padStart(4, "0")}`,
+        summary: body.summary,
+        description: body.description,
+        testCaseId: body.testCaseId,
+        priority: body.priority,
+        reporterUserId: auth.userId ?? agent.ownerUserId,
+        status: "NEW",
+      },
+    });
+    await recordAudit({
+      projectId: agent.projectId,
+      agentId: agent.id,
+      action: "defect.created",
+      entityType: "Defect",
+      entityId: defect.id,
+    });
+    res.status(201).json({ defect });
+  }),
+);
+
+agentToolsRouter.get(
+  "/release-readiness",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
+    const activeCycle = await prisma.testCycle.findFirst({
+      where: { projectId: agent.projectId, status: "ACTIVE" },
+      include: { release: { include: { builds: true } } },
+    });
+    if (!activeCycle) {
+      return res.json({ ready: false, blockers: ["No active test cycle"] });
+    }
+    const currentBuild = activeCycle.release.builds.find((b) => b.isCurrent) ?? null;
+    const cases = await prisma.testCycleCase.findMany({
+      where: { testCycleId: activeCycle.id, plannedPriority: { in: ["P0", "P1"] } },
+      include: {
+        assignment: true,
+        testCase: true,
+        executions: currentBuild
+          ? { where: { buildId: currentBuild.id }, orderBy: { createdAt: "desc" }, take: 1 }
+          : { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+    const blockers: string[] = [];
+    const incomplete = cases.filter((c) => c.assignment?.status !== "COMPLETED");
+    if (incomplete.length) blockers.push(`${incomplete.length} critical assignments incomplete`);
+    const stale = cases.filter((c) => {
+      const latest = c.executions[0];
+      return !latest || latest.status !== "PASSED" || (currentBuild && latest.buildId !== currentBuild.id);
+    });
+    if (currentBuild && stale.length) {
+      blockers.push(`${stale.length} critical tests not passing on ${currentBuild.label}`);
+    }
+    res.json({ ready: blockers.length === 0, blockers, currentBuild, release: activeCycle.release });
   }),
 );

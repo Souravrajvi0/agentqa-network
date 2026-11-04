@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { useAuthStore } from "../stores/auth";
 import { ErrorText, PageHeader, StatusBadge } from "../components/ui";
 import { invalidateProjectQueries, useTestingContext } from "../hooks/useTestingContext";
+import { useProjectRole } from "../hooks/useProjectRole";
+import { roleCanWriteDefects } from "../components/RequireProjectRole";
 
 export function DesignDecisionsPage() {
   const { projectId = "" } = useParams();
@@ -82,10 +83,11 @@ export function DesignDecisionsPage() {
 
 export function DeveloperChangesPage() {
   const { projectId = "" } = useParams();
-  const user = useAuthStore((s) => s.user);
+  const { role } = useProjectRole(projectId);
   const qc = useQueryClient();
   const ctx = useTestingContext(projectId);
   const [error, setError] = useState<string | null>(null);
+  const [editImpact, setEditImpact] = useState<Record<string, string[]>>({});
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -104,7 +106,8 @@ export function DeveloperChangesPage() {
         method: "POST",
         body: JSON.stringify({
           ...form,
-          releaseId: ctx.data?.activeCycle ? undefined : undefined,
+          releaseId: ctx.data?.activeCycle?.releaseId,
+          buildId: ctx.data?.currentBuild?.id,
           submit,
         }),
       }),
@@ -117,25 +120,32 @@ export function DeveloperChangesPage() {
     onError: (e: Error) => setError(e.message),
   });
 
-  async function approve(id: string) {
+  async function transition(id: string, status: string, impactedTestIds?: string[]) {
     try {
-      await api(`/api/projects/${projectId}/developer-changes/${id}/approve`, { method: "POST" });
+      await api(`/api/projects/${projectId}/developer-changes/${id}/transition`, {
+        method: "POST",
+        body: JSON.stringify({ status, impactedTestIds }),
+      });
       invalidateProjectQueries(qc, projectId);
       refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Approve failed");
+      setError(e instanceof Error ? e.message : "Action failed");
     }
   }
 
-  const isDev = user?.globalRole === "DEVELOPER" || user?.globalRole === "ADMINISTRATOR";
+  const isDev = role === "DEVELOPER" || role === "ADMINISTRATOR";
+  const isLead = role === "QA_LEAD" || role === "ADMINISTRATOR";
 
   return (
     <div>
-      <PageHeader title="Developer Change Center" subtitle="Announce urgent testing needs and track approvals" />
+      <PageHeader
+        title="Developer Change Center"
+        subtitle="Draft → submit → QA review → retest → verified (explicit test impact)"
+      />
       <ErrorText message={error} />
       {isDev ? (
         <section className="card mb-4 space-y-2">
-          <h2 className="font-medium">Announce a change</h2>
+          <h2 className="font-medium">Register a change</h2>
           <input className="input" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <textarea className="input min-h-[90px]" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <select className="input" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })}>
@@ -145,7 +155,8 @@ export function DeveloperChangesPage() {
               </option>
             ))}
           </select>
-          <div className="max-h-32 overflow-auto rounded border border-white/[0.08] p-2 text-xs">
+          <p className="text-xs text-label">Explicit impacted tests (no automatic impact analysis)</p>
+          <div className="max-h-32 overflow-auto rounded border p-2 text-xs" style={{ borderColor: "var(--divider)" }}>
             {(ctx.data?.testCases ?? []).map((tc) => (
               <label key={tc.id} className="flex gap-2 py-1">
                 <input
@@ -175,21 +186,77 @@ export function DeveloperChangesPage() {
         </section>
       ) : null}
       <div className="space-y-3">
-        {(data?.changes ?? []).map((c) => (
-          <article key={c.id} className="card">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-medium">{c.title}</h2>
-              <StatusBadge value={c.urgency} />
-            </div>
-            <p className="mt-2 text-sm text-body-theme">{c.description}</p>
-            <p className="mt-1 text-xs text-muted">Status: {c.status}</p>
-            {c.status === "SUBMITTED" && (user?.globalRole === "QA_LEAD" || user?.globalRole === "ADMINISTRATOR") ? (
-              <button className="btn-primary mt-3" onClick={() => approve(c.id)}>
-                QA Lead approve & refresh queue
-              </button>
-            ) : null}
-          </article>
-        ))}
+        {(data?.changes ?? []).map((c) => {
+          const impactIds = editImpact[c.id] ?? c.impactedTestIds ?? [];
+          return (
+            <article key={c.id} className="card">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-medium">{c.title}</h2>
+                <div className="flex gap-2">
+                  <StatusBadge value={c.urgency} />
+                  <StatusBadge value={c.status} />
+                </div>
+              </div>
+              <p className="mt-2 text-sm text-body-theme">{c.description}</p>
+              {c.build?.label ? (
+                <p className="mt-1 text-xs text-muted">Build: {c.build.label}</p>
+              ) : null}
+              <div className="mt-3">
+                <p className="text-xs font-medium text-label">Impacted tests</p>
+                <ul className="mt-1 space-y-1 text-sm">
+                  {(c.impactedTests ?? []).map((t: any) => (
+                    <li key={t.id}>
+                      {t.externalId} — {t.title}
+                    </li>
+                  ))}
+                  {!c.impactedTests?.length ? <li className="text-muted">None linked</li> : null}
+                </ul>
+              </div>
+              {isLead && c.status === "SUBMITTED" ? (
+                <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: "var(--divider)" }}>
+                  <p className="text-xs text-label">Adjust retest scope before approval</p>
+                  <div className="max-h-28 overflow-auto text-xs">
+                    {(ctx.data?.testCases ?? []).map((tc) => (
+                      <label key={tc.id} className="flex gap-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={impactIds.includes(tc.id)}
+                          onChange={(e) => {
+                            setEditImpact((prev) => ({
+                              ...prev,
+                              [c.id]: e.target.checked
+                                ? [...impactIds, tc.id]
+                                : impactIds.filter((id) => id !== tc.id),
+                            }));
+                          }}
+                        />
+                        {tc.externalId}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="btn-primary" onClick={() => transition(c.id, "APPROVED", impactIds)}>
+                      Approve retest scope
+                    </button>
+                    <button className="btn-ghost" onClick={() => transition(c.id, "REJECTED")}>
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {isLead && c.status === "APPROVED" ? (
+                <button className="btn-secondary mt-3" onClick={() => transition(c.id, "COMPLETED")}>
+                  Mark verified after retest
+                </button>
+              ) : null}
+              {isDev && c.status === "DRAFT" ? (
+                <button className="btn-primary mt-3" onClick={() => transition(c.id, "SUBMITTED")}>
+                  Submit draft
+                </button>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -197,6 +264,7 @@ export function DeveloperChangesPage() {
 
 export function DefectsPage() {
   const { projectId = "" } = useParams();
+  const { role } = useProjectRole(projectId);
   const qc = useQueryClient();
   const ctx = useTestingContext(projectId);
   const [error, setError] = useState<string | null>(null);
@@ -244,6 +312,7 @@ export function DefectsPage() {
     <div>
       <PageHeader title="Defect Workspace" subtitle="Report, triage, and verify defects" />
       <ErrorText message={error} />
+      {roleCanWriteDefects(role) ? (
       <section className="card mb-4 space-y-2">
         <h2 className="font-medium">Report defect</h2>
         <input className="input" placeholder="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
@@ -260,6 +329,9 @@ export function DefectsPage() {
           Create defect
         </button>
       </section>
+      ) : (
+        <p className="mb-4 text-sm text-label">View-only: your role can browse defects but not create them.</p>
+      )}
       <div className="space-y-2">
         {(data?.defects ?? []).map((d) => (
           <div key={d.id} className="card text-sm">
@@ -273,11 +345,13 @@ export function DefectsPage() {
               <StatusBadge value={d.status} />
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {["TRIAGED", "IN_PROGRESS", "READY_FOR_QA", "VERIFIED", "CLOSED"].map((status) => (
+              {role !== "VIEWER"
+                ? ["TRIAGED", "IN_PROGRESS", "READY_FOR_QA", "VERIFIED", "CLOSED", "REOPENED"].map((status) => (
                 <button key={status} className="btn-ghost" onClick={() => updateStatus.mutate({ id: d.id, status })}>
                   {status}
                 </button>
-              ))}
+              ))
+                : null}
             </div>
           </div>
         ))}
@@ -391,7 +465,17 @@ export function ReleaseReadinessPage() {
           ))}
         </ul>
         {(data?.incompleteCritical ?? []).length ? (
-          <p className="mt-3 text-sm text-warning">Critical remaining: {(data.incompleteCritical as string[]).join(", ")}</p>
+          <p className="mt-3 text-sm text-warning">
+            Critical assignments incomplete: {(data.incompleteCritical as string[]).join(", ")}
+          </p>
+        ) : null}
+        {(data?.staleOnCurrentBuild ?? []).length ? (
+          <p className="mt-3 text-sm text-warning">
+            Stale on current build: {(data.staleOnCurrentBuild as string[]).join(", ")}
+          </p>
+        ) : null}
+        {data?.currentBuild ? (
+          <p className="mt-2 text-xs text-label">Current build: {data.currentBuild.label}</p>
         ) : null}
         <p className="mt-4 text-xs text-muted">{data?.disclaimer}</p>
       </div>

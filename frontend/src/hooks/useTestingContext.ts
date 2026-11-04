@@ -6,7 +6,7 @@ export function useTestingContext(projectId: string) {
     queryKey: ["testing-context", projectId],
     queryFn: () =>
       api<{
-        activeCycle: { id: string; name: string } | null;
+        activeCycle: { id: string; name: string; releaseId?: string } | null;
         currentBuild: { id: string; label: string } | null;
         environments: { id: string; name: string }[];
         testCases: { id: string; externalId: string; title: string }[];

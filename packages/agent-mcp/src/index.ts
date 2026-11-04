@@ -24,7 +24,12 @@ async function agentFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
-const server = new McpServer({ name: "agentqa-network", version: "1.0.0" });
+const server = new McpServer({ name: "agentqa-network", version: "1.1.0" });
+
+server.tool("get_project_context", "Project summary, health, and agent identity", {}, async () => {
+  const data = await agentFetch("/api/agent-tools/project-context");
+  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+});
 
 server.tool(
   "get_test_queue",
@@ -32,6 +37,17 @@ server.tool(
   {},
   async () => {
     const data = await agentFetch("/api/agent-tools/test-queue");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "list_test_cases",
+  "List test cases in the agent project (optional search q)",
+  { q: z.string().optional() },
+  async ({ q }) => {
+    const suffix = q ? `?q=${encodeURIComponent(q)}` : "";
+    const data = await agentFetch(`/api/agent-tools/test-cases${suffix}`);
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   },
 );
@@ -91,6 +107,44 @@ server.tool(
       method: "POST",
       body: JSON.stringify(body),
     });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "list_defects",
+  "List defects in the agent project",
+  {},
+  async () => {
+    const data = await agentFetch("/api/agent-tools/defects");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "create_defect",
+  "Create a defect linked to optional test case",
+  {
+    summary: z.string(),
+    description: z.string().optional(),
+    testCaseId: z.string().optional(),
+    priority: z.enum(["P0", "P1", "P2", "P3"]).optional(),
+  },
+  async (body) => {
+    const data = await agentFetch("/api/agent-tools/defects", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "get_release_readiness",
+  "Release readiness with current-build evidence checks",
+  {},
+  async () => {
+    const data = await agentFetch("/api/agent-tools/release-readiness");
     return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   },
 );

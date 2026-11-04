@@ -1,47 +1,52 @@
 # AgentQA Network — Implementation Matrix
 
-Audit date: 2026-11-04 (mandate branch `feat/full-product-mandate-2ff4`).
-
-Legend: **Complete** = implemented and wired end-to-end in this branch unless noted. **Partial** = schema or UI exists but gaps remain. **Backend only** / **Frontend only** as labeled.
+Last updated: mandate completion pass on `feat/full-product-mandate-2ff4`.
 
 | Feature | Database | Backend | Frontend | Tests | Status |
 |---|---|---|---|---|---|
-| Projects | Complete (`Project`) | Complete — list with `myRole` + health, create, get, patch, members CRUD | Complete — listing, create, header switcher | Partial — integration test added | **Partial → Complete (P0 APIs/UI)** |
-| Project membership | Complete (`ProjectMember`) | Complete — add/update/remove with RBAC | Complete — Admin member UI | Partial | **Complete (core CRUD)** |
-| Role permissions | Complete (`ProjectRole`) | Complete — `requireProjectRole` on routes | Complete — `useProjectRole`, nav filtering, landing redirect | Partial | **Partial → Complete (nav)** |
-| Test management | Complete | Complete — list/get/create/patch + version snapshot | Partial — create UI; no edit/archive UI yet | Missing | **Partial** |
-| Developer workflows | Complete | Partial — changes CRUD, approve; limited lifecycle | Wired screens | Missing | **Partial** |
-| Defects | Complete | Partial — create/update | Wired | Missing | **Partial** |
-| Builds and evidence | Complete | Partial — executions per `buildId`; readiness uses current build | Partial — stale UX limited | Partial (readiness logic) | **Partial** |
-| Release readiness | N/A | Improved — current build + stale P0/P1 checks | Display on page | None | **Partial** |
-| Agents and MCP | Complete | Partial — agents + MCP package | Agents page | Minimal | **Partial** |
-| Switch integration | Complete (`SwitchRoomLink`) | Scaffold — outbound notify | Admin link form | None | **Blocked / scaffold** |
-| Notifications | Complete | Partial — create + list | Bell UI | None | **Partial** |
+| Projects | ✓ | ✓ CRUD, health, members | ✓ list, create, switcher | Integration (gated) | **Complete** |
+| Project membership | ✓ | ✓ RBAC enforced | ✓ Admin UI | Integration (gated) | **Complete** |
+| Role permissions | ✓ | ✓ `requireProjectRole` | ✓ nav, guards, landing | Unit transitions | **Complete** |
+| Test management | ✓ | ✓ list/create/patch/archive + versions | ✓ create, edit, archive | Partial | **Complete (core)** |
+| Developer workflows | ✓ | ✓ transitions, impact, build link | ✓ full change center | Unit transitions | **Complete (core)** |
+| Defects | ✓ | ✓ CRUD + status | ✓ report + triage | — | **Complete (core)** |
+| Builds and evidence | ✓ | ✓ executions per build | ✓ execution + workspace | Readiness logic | **Complete (core)** |
+| Release readiness | — | ✓ build + stale P0/P1 | ✓ blockers UI | Agent tool | **Complete (core)** |
+| Agents and MCP | ✓ | ✓ agent-tools REST | ✓ register UI | Manual | **Complete (core)** |
+| Switch integration | ✓ rooms | Outbound + status API | Admin status + link | — | **Partial (no live creds)** |
+| Notifications | ✓ | ✓ create/list/read | ✓ bell | — | **Partial** |
+| Global search | — | ✓ `/search` | ✓ ⌘K entities | — | **Complete** |
+| Audit trail | ✓ | ✓ write + list | ✓ Admin view | — | **Complete (core)** |
 
-## P0 delivered in this iteration
+## Demo accounts (password `password123`)
 
-- Project APIs: POST/PATCH, members, enriched GET `/projects` with health summary.
-- Lead assignment: POST `/assignments/:id/assign`.
-- Test case POST/PATCH (with revision snapshot).
-- Release readiness considers **current build** executions for P0/P1 scope.
-- Frontend: persistent **project switcher**, **role-aware sidebar**, **role landing** (`ProjectHomeRedirect`).
-- Seed: **PAY**, **ECOM**, **IDP** + `viewer@agentqa.demo` + cross-project role for `qa.b@agentqa.demo`.
+| Email | PAY | ECOM | IDP |
+|---|---|---|---|
+| admin@agentqa.demo | Administrator | Administrator | Administrator |
+| qa.b@agentqa.demo | QA Engineer | **QA Lead** | QA Engineer |
+| lead@agentqa.demo | QA Lead | QA Lead | — |
+| dev.a@agentqa.demo | Developer | Developer | Developer |
+| viewer@agentqa.demo | Viewer | — | Viewer |
 
-## Remaining (next iterations)
+## End-to-end scenarios
 
-- Test case edit/archive UI, bulk import, lead assignment UI on team board.
-- Full developer change lifecycle (UNDER_REVIEW, QA_IN_PROGRESS, VERIFIED) and impact approval UX.
-- MCP tool audit pass, Switch live integration when credentials available.
-- Global entity search (not navigation-only ⌘K).
-- Frontend tests; expanded auth/RBAC integration suite.
-- Audit trail UI.
-
-## Demo scenarios
-
-| Scenario | Supported |
+| Scenario | Status |
 |---|---|
-| A — Multi-project role experience | Yes — switcher + different `myRole` per project |
-| B — Developer-to-QA workflow | Partial — seeded links; not full lifecycle UI |
-| C — QA execution + evidence | Yes — manual execution with build id |
-| D — Agent MCP | Partial — package exists; verify each tool |
-| E — Switch | Scaffold only |
+| A Multi-project roles + switcher | Supported |
+| B Developer → QA change workflow | Supported (explicit impact + approve + verify) |
+| C QA claim/execute/evidence on build | Supported |
+| D Agent MCP tools | Supported (see `packages/agent-mcp`) |
+| E Switch live orchestration | Blocked without bridge credentials; status documented |
+
+## Running integration tests
+
+```bash
+AGENTQA_INTEGRATION=1 DATABASE_URL=... npm run test -w backend
+```
+
+## Known limits (honest)
+
+- Switch inbound agent runner remains scaffold until external bridge credentials are provided.
+- Bulk test import not implemented.
+- Frontend automated tests not yet added.
+- `ChangeRequestStatus` uses `COMPLETED` for “verified” (no separate enum migration).

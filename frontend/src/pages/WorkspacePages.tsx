@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { ErrorText, EmptyState, MonoId, PageHeader, SectionTitle, StatusBadge } from "../components/ui";
 import { invalidateProjectQueries } from "../hooks/useTestingContext";
+import { useProjectRole } from "../hooks/useProjectRole";
 
 export function MyWorkspacePage() {
   const { projectId = "" } = useParams();
@@ -153,10 +154,31 @@ export function MyWorkspacePage() {
 
 export function TeamBoardPage() {
   const { projectId = "" } = useParams();
-  const { data, isLoading } = useQuery({
+  const qc = useQueryClient();
+  const { role } = useProjectRole(projectId);
+  const [error, setError] = useState<string | null>(null);
+  const [assigneeByCase, setAssigneeByCase] = useState<Record<string, string>>({});
+
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["team-board", projectId],
     queryFn: () => api<any>(`/api/projects/${projectId}/team-board`),
   });
+
+  const assign = useMutation({
+    mutationFn: ({ assignmentId, assigneeUserId }: { assignmentId: string; assigneeUserId: string }) =>
+      api(`/api/assignments/${assignmentId}/assign`, {
+        method: "POST",
+        body: JSON.stringify({ assigneeUserId }),
+      }),
+    onSuccess: () => {
+      setError(null);
+      invalidateProjectQueries(qc, projectId);
+      refetch();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const canAssign = role === "QA_LEAD" || role === "ADMINISTRATOR";
 
   const duplicateWarnings = (data?.cases ?? []).filter(
     (c: any) => c.assignment?.status === "CLAIMED" || c.assignment?.status === "IN_PROGRESS",
@@ -164,7 +186,8 @@ export function TeamBoardPage() {
 
   return (
     <div>
-      <PageHeader title="Team Testing Board" subtitle="Assignments, agents, and duplicate-work visibility" />
+      <PageHeader title="Team Testing Board" subtitle="Assignments, lead dispatch, and agent visibility" />
+      <ErrorText message={error} />
       {isLoading ? <p className="text-label">Loading board…</p> : null}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="card lg:col-span-2">
@@ -181,6 +204,34 @@ export function TeamBoardPage() {
                   <p className="mt-1 text-xs text-muted">
                     {c.assignment?.assigneeUser?.name ?? c.assignment?.assigneeAgent?.displayName ?? "Unassigned"}
                   </p>
+                  {canAssign && c.assignment?.id ? (
+                    <div className="mt-2 flex flex-col items-end gap-1">
+                      <select
+                        className="input h-8 max-w-[180px] py-1 text-xs"
+                        value={assigneeByCase[c.id] ?? ""}
+                        onChange={(e) => setAssigneeByCase((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      >
+                        <option value="">Assign to…</option>
+                        {(data?.qaMembers ?? []).map((m: any) => (
+                          <option key={m.user.id} value={m.user.id}>
+                            {m.user.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn-ghost h-7 px-2 text-[11px]"
+                        disabled={!assigneeByCase[c.id] || assign.isPending}
+                        onClick={() =>
+                          assign.mutate({
+                            assignmentId: c.assignment.id,
+                            assigneeUserId: assigneeByCase[c.id],
+                          })
+                        }
+                      >
+                        Assign
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </li>
             ))}

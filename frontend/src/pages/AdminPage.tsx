@@ -25,6 +25,18 @@ export function AdminPage() {
   });
   const [memberForm, setMemberForm] = useState({ email: "", role: "QA_ENGINEER" as ProjectRole });
 
+  const { data: switchStatus } = useQuery({
+    queryKey: ["switch-status", projectId],
+    queryFn: () => api<any>(`/api/projects/${projectId}/switch-status`),
+    enabled: Boolean(projectId) && canAccessAdmin(role),
+  });
+
+  const { data: auditData } = useQuery({
+    queryKey: ["audit", projectId],
+    queryFn: () => api<{ events: any[] }>(`/api/projects/${projectId}/audit-events`),
+    enabled: Boolean(projectId) && canAccessAdmin(role),
+  });
+
   const { data: membersData, refetch: refetchMembers } = useQuery({
     queryKey: ["members", projectId],
     queryFn: () => api<{ members: Member[] }>(`/api/projects/${projectId}/members`),
@@ -117,6 +129,18 @@ export function AdminPage() {
         ) : null}
       </section>
       <section className="card mb-4 space-y-2">
+        <h2 className="font-medium">Switch integration</h2>
+        <p className="text-sm text-body-theme">{switchStatus?.message}</p>
+        <p className="text-xs text-label">Status: {switchStatus?.status ?? "unknown"}</p>
+        <ul className="text-xs text-muted">
+          {(switchStatus?.projectRooms ?? []).map((r: any) => (
+            <li key={r.id}>
+              {r.roomName} ({r.roomId})
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="card mb-4 space-y-2">
         <h2 className="font-medium">Link Switch room</h2>
         <input className="input" placeholder="Room ID" value={roomForm.roomId} onChange={(e) => setRoomForm({ ...roomForm, roomId: e.target.value })} />
         <input className="input" placeholder="Room name" value={roomForm.roomName} onChange={(e) => setRoomForm({ ...roomForm, roomName: e.target.value })} />
@@ -125,11 +149,24 @@ export function AdminPage() {
           Save room link
         </button>
       </section>
-      <section className="card">
+      <section className="card mb-4">
         <h2 className="mb-2 font-medium">QA coordination</h2>
         <button className="btn-secondary" onClick={() => scan.mutate()}>
           Scan for unassigned critical tests
         </button>
+      </section>
+      <section className="card">
+        <h2 className="mb-2 font-medium">Audit trail</h2>
+        <ul className="max-h-64 space-y-2 overflow-auto text-xs text-label">
+          {(auditData?.events ?? []).map((e) => (
+            <li key={e.id} className="border-b pb-2" style={{ borderColor: "var(--divider)" }}>
+              <span className="font-medium text-heading">{e.action}</span>
+              <span className="text-muted"> · {new Date(e.createdAt).toLocaleString()}</span>
+              <p>{e.user?.name ?? "System"} · {e.entityType}</p>
+            </li>
+          ))}
+          {!auditData?.events?.length ? <li>No audit events recorded yet.</li> : null}
+        </ul>
       </section>
     </div>
   );

@@ -126,6 +126,7 @@ export function AppLayout() {
               <PresenceStack agents={agentsData?.agents ?? []} />
             </div>
             <ThemeToggle />
+            {role && navSlugsForRole(role).includes("execution") ? (
             <button
               type="button"
               className="btn-primary hidden sm:inline-flex"
@@ -133,6 +134,7 @@ export function AppLayout() {
             >
               Run tests
             </button>
+            ) : null}
             <NotificationBell />
           </div>
         </div>

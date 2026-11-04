@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
@@ -109,15 +109,83 @@ export function TestCasesPage() {
 
 export function TestCaseDetailPage() {
   const { projectId = "", testCaseId = "" } = useParams();
-  const { data } = useQuery({
+  const { role } = useProjectRole(projectId);
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: "", description: "", priority: "P2" });
+
+  const { data, refetch } = useQuery({
     queryKey: ["test-case", testCaseId],
     queryFn: () => api<{ testCase: any }>(`/api/projects/${projectId}/test-cases/${testCaseId}`),
   });
   const tc = data?.testCase;
 
+  useEffect(() => {
+    if (tc && !editing) {
+      setForm({ title: tc.title, description: tc.description ?? "", priority: tc.priority });
+    }
+  }, [tc, editing]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/api/projects/${projectId}/test-cases/${testCaseId}`, {
+        method: "PATCH",
+        body: JSON.stringify(form),
+      }),
+    onSuccess: () => {
+      setEditing(false);
+      setError(null);
+      refetch();
+      qc.invalidateQueries({ queryKey: ["test-cases", projectId] });
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const archive = useMutation({
+    mutationFn: () =>
+      api(`/api/projects/${projectId}/test-cases/${testCaseId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ archived: true }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-cases", projectId] });
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <div>
       <PageHeader title={tc?.externalId ?? "Test case"} subtitle={tc?.title} />
+      <ErrorText message={error} />
+      {canEditTestCases(role) && tc ? (
+        <div className="mb-4 flex gap-2">
+          <button className="btn-secondary" onClick={() => setEditing((v) => !v)}>
+            {editing ? "Cancel edit" : "Edit"}
+          </button>
+          {!tc.archived ? (
+            <button className="btn-ghost" onClick={() => archive.mutate()}>
+              Archive
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {editing ? (
+        <section className="card mb-4 grid gap-2">
+          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <select className="input" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+            {["P0", "P1", "P2", "P3"].map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <button className="btn-primary w-fit" onClick={() => save.mutate()}>
+            Save revision
+          </button>
+        </section>
+      ) : null}
       {tc ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="card space-y-2 text-sm">
