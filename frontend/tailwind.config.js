@@ -15,9 +15,9 @@ export default {
         passed: "#10b981",
         critical: "#f43f5e",
         warning: "#f59e0b",
-        info: "#0284c7",
-        agent: "#8b5cf6",
-        human: "#14b8a6",
+        info: "#71717a",
+        agent: "#a1a1aa",
+        human: "#d4d4d8",
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(255,255,255,0.06), 0 8px 30px rgba(0,0,0,0.35)",

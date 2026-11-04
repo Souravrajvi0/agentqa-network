@@ -57,7 +57,7 @@ export function AppLayout() {
   const switchLinked = (agentsData?.rooms?.length ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-[#09090b]">
       <CommandPalette projectId={selectedProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
       <header className="shell-header">
         <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
@@ -65,7 +65,7 @@ export function AppLayout() {
             ☰
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">AQ</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white text-[10px] font-bold text-black">AQ</div>
             <div className="hidden sm:block">
               <p className="text-sm font-semibold leading-none text-zinc-100">AgentQA Network</p>
               <p className="text-[11px] text-zinc-500">Switch orchestration</p>
@@ -76,7 +76,7 @@ export function AppLayout() {
 
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <select
-              className="max-w-[140px] truncate rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-indigo-500/50 sm:max-w-[200px]"
+              className="max-w-[140px] truncate rounded-md border border-white/10 bg-[#0c0c0e] px-2 py-1.5 text-xs text-zinc-300 outline-none focus:border-white/25 sm:max-w-[200px]"
               value={selectedProjectId ?? ""}
               onChange={(e) => {
                 setSelectedProjectId(e.target.value);
@@ -89,7 +89,7 @@ export function AppLayout() {
                 </option>
               ))}
             </select>
-            <span className="hidden rounded-md border border-zinc-700/80 bg-zinc-900/40 px-2 py-1 font-mono text-[11px] text-zinc-400 md:inline">
+            <span className="hidden rounded-md border border-white/10 bg-[#0c0c0e] px-2 py-1 font-mono text-[11px] text-zinc-500 md:inline">
               v{releaseLabel}
             </span>
           </div>
@@ -103,7 +103,7 @@ export function AppLayout() {
               <span
                 className={clsx(
                   "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px]",
-                  switchLinked ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-zinc-600 text-zinc-500",
+                  switchLinked ? "border-emerald-700/50 bg-emerald-950/40 text-emerald-300" : "border-white/10 text-zinc-600",
                 )}
               >
                 <span className={clsx("h-1.5 w-1.5 rounded-full", switchLinked ? "bg-emerald-400 animate-pulse" : "bg-zinc-500")} />
@@ -122,7 +122,7 @@ export function AppLayout() {
       <div className="lg:grid lg:grid-cols-[248px_1fr]">
         <aside
           className={clsx(
-            "border-b border-zinc-800 bg-zinc-950/50 p-4 lg:border-b-0 lg:border-r",
+            "border-b border-white/[0.06] bg-[#0a0a0c] p-4 lg:border-b-0 lg:border-r lg:border-white/[0.06]",
             sidebarOpen ? "block" : "hidden lg:block",
           )}
         >
@@ -137,7 +137,7 @@ export function AppLayout() {
                   >
                     <span>{label}</span>
                     {slug === "developer-changes" && unread > 0 ? (
-                      <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-200">{unread}</span>
+                      <span className="rounded-full border border-amber-700/40 bg-amber-950/50 px-1.5 text-[10px] text-amber-200">{unread}</span>
                     ) : null}
                   </NavLink>
                 ))

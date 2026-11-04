@@ -31,25 +31,25 @@ export function NotificationBell() {
   return (
     <div className="relative mb-4">
       <details className="group">
-        <summary className="cursor-pointer list-none rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300 hover:border-zinc-600">
+        <summary className="cursor-pointer list-none rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-sm text-zinc-300 hover:border-white/20">
           Notifications
           {unread.length ? (
-            <span className="ml-2 rounded-full bg-indigo-500/30 px-2 py-0.5 text-xs text-indigo-200">{unread.length}</span>
+            <span className="ml-2 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-xs text-zinc-100">{unread.length}</span>
           ) : null}
         </summary>
-        <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-2 shadow-xl">
+        <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-lg border border-white/[0.08] bg-[#111113] p-2 shadow-glow">
           {(data?.notifications ?? []).length === 0 ? (
-            <p className="p-2 text-xs text-slate-500">No notifications yet</p>
+            <p className="p-2 text-xs text-zinc-500">No notifications yet</p>
           ) : (
             <ul className="space-y-2">
               {(data?.notifications ?? []).map((n) => (
-                <li key={n.id} className="rounded-lg border border-slate-800 p-2 text-xs">
-                  <p className="font-medium text-slate-100">{n.title}</p>
-                  <p className="text-slate-400">{n.body}</p>
+                <li key={n.id} className="rounded-lg border border-white/[0.06] p-2 text-xs">
+                  <p className="font-medium text-zinc-100">{n.title}</p>
+                  <p className="text-zinc-500">{n.body}</p>
                   <div className="mt-2 flex gap-2">
                     {n.linkPath && projectId ? (
                       <Link
-                        className="text-brand-500 hover:underline"
+                        className="link-accent"
                         to={n.linkPath.startsWith("/") ? n.linkPath : `/projects/${projectId}/${n.linkPath}`}
                         onClick={() => !n.read && markRead.mutate(n.id)}
                       >
@@ -57,7 +57,7 @@ export function NotificationBell() {
                       </Link>
                     ) : null}
                     {!n.read ? (
-                      <button className="text-slate-400 hover:text-slate-200" onClick={() => markRead.mutate(n.id)}>
+                      <button className="text-zinc-500 hover:text-zinc-200" onClick={() => markRead.mutate(n.id)}>
                         Mark read
                       </button>
                     ) : null}

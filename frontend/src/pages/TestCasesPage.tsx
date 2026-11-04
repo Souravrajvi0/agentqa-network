@@ -17,9 +17,9 @@ export function TestCasesPage() {
     <div>
       <PageHeader title="Test Case Explorer" subtitle="Search, filter, and inspect linked design context" />
       <input className="input mb-4 max-w-md" placeholder="Search by id or title" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="overflow-x-auto rounded-xl border border-slate-800">
+      <div className="table-shell">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-900 text-left text-slate-400">
+          <thead>
             <tr>
               <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2">Title</th>
@@ -29,9 +29,9 @@ export function TestCasesPage() {
           </thead>
           <tbody>
             {(data?.testCases ?? []).map((tc) => (
-              <tr key={tc.id} className="border-t border-slate-800 hover:bg-slate-900/60">
+              <tr key={tc.id}>
                 <td className="px-3 py-2">
-                  <Link className="text-brand-500 hover:underline" to={`/projects/${projectId}/test-cases/${tc.id}`}>
+                  <Link className="link-accent" to={`/projects/${projectId}/test-cases/${tc.id}`}>
                     {tc.externalId}
                   </Link>
                 </td>
@@ -66,8 +66,8 @@ export function TestCaseDetailPage() {
             <p>
               Priority: <StatusBadge value={tc.priority} />
             </p>
-            <p className="text-slate-300">{tc.description}</p>
-            <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs">{JSON.stringify(tc.steps, null, 2)}</pre>
+            <p className="text-zinc-300">{tc.description}</p>
+            <pre className="surface-inset overflow-auto p-3 text-xs">{JSON.stringify(tc.steps, null, 2)}</pre>
           </section>
           <section className="card">
             <h3 className="mb-2 font-medium">Design decisions</h3>
@@ -75,12 +75,12 @@ export function TestCaseDetailPage() {
               {(tc.designLinks ?? []).map((d: any) => (
                 <li key={d.designDecision.id}>
                   <p className="font-medium">{d.designDecision.externalId}</p>
-                  <p className="text-slate-400">{d.designDecision.title}</p>
+                  <p className="text-zinc-500">{d.designDecision.title}</p>
                 </li>
               ))}
             </ul>
             <h3 className="mb-2 mt-4 font-medium">Knowledge</h3>
-            <ul className="space-y-2 text-sm text-slate-300">
+            <ul className="space-y-2 text-sm text-zinc-300">
               {(tc.knowledge ?? []).map((k: any) => (
                 <li key={k.id}>
                   <p className="font-medium">{k.title}</p>

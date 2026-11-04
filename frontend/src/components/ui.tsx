@@ -1,30 +1,31 @@
 import clsx from "clsx";
 
+/** Muted semantic badges — color only where it carries meaning */
 const priorityStyles: Record<string, string> = {
-  P0: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-  P1: "bg-amber-500/15 text-amber-200 ring-amber-500/30",
-  P2: "bg-sky-500/15 text-sky-200 ring-sky-500/30",
-  P3: "bg-zinc-600/30 text-zinc-300 ring-zinc-500/20",
+  P0: "border-rose-500/40 bg-rose-950/50 text-rose-200",
+  P1: "border-amber-500/35 bg-amber-950/40 text-amber-100",
+  P2: "border-zinc-600 bg-zinc-900 text-zinc-300",
+  P3: "border-zinc-700 bg-zinc-950 text-zinc-500",
 };
 
 const statusStyles: Record<string, string> = {
-  AVAILABLE: "bg-zinc-700/50 text-zinc-300",
-  CLAIMED: "bg-indigo-500/15 text-indigo-200",
-  IN_PROGRESS: "bg-violet-500/15 text-violet-200",
-  COMPLETED: "bg-emerald-500/15 text-emerald-300",
-  BLOCKED: "bg-amber-500/15 text-amber-200",
-  PASSED: "bg-emerald-500/15 text-emerald-300",
-  FAILED: "bg-rose-500/15 text-rose-300",
-  NOT_RUN: "bg-zinc-700/40 text-zinc-400",
-  SUBMITTED: "bg-amber-500/15 text-amber-200",
-  APPROVED: "bg-emerald-500/15 text-emerald-300",
-  NEW: "bg-sky-500/15 text-sky-200",
+  AVAILABLE: "border-zinc-700 bg-zinc-900 text-zinc-400",
+  CLAIMED: "border-zinc-500 bg-zinc-800 text-zinc-200",
+  IN_PROGRESS: "border-zinc-500 bg-zinc-800 text-zinc-100",
+  COMPLETED: "border-emerald-600/40 bg-emerald-950/40 text-emerald-200",
+  BLOCKED: "border-amber-600/35 bg-amber-950/30 text-amber-100",
+  PASSED: "border-emerald-600/40 bg-emerald-950/40 text-emerald-200",
+  FAILED: "border-rose-600/40 bg-rose-950/40 text-rose-200",
+  NOT_RUN: "border-zinc-800 bg-zinc-950 text-zinc-600",
+  SUBMITTED: "border-amber-600/35 bg-amber-950/30 text-amber-100",
+  APPROVED: "border-emerald-600/40 bg-emerald-950/40 text-emerald-200",
+  NEW: "border-zinc-600 bg-zinc-900 text-zinc-300",
 };
 
 export function StatusBadge({ value }: { value: string }) {
-  const style = priorityStyles[value] ?? statusStyles[value] ?? "bg-zinc-700/50 text-zinc-300";
+  const style = priorityStyles[value] ?? statusStyles[value] ?? "border-zinc-700 bg-zinc-900 text-zinc-400";
   return (
-    <span className={clsx("rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ring-1 ring-inset", style)}>
+    <span className={clsx("rounded border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide", style)}>
       {value.replace(/_/g, " ")}
     </span>
   );
@@ -36,8 +37,8 @@ export function MonoId({ children }: { children: React.ReactNode }) {
 
 export function EmptyState({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="card border-dashed text-center text-zinc-400">
-      <p className="font-medium text-zinc-200">{title}</p>
+    <div className="card border-dashed border-white/10 text-center text-zinc-500">
+      <p className="font-medium text-zinc-300">{title}</p>
       {description ? <p className="mt-1 text-sm">{description}</p> : null}
     </div>
   );
@@ -46,16 +47,16 @@ export function EmptyState({ title, description }: { title: string; description?
 export function ErrorText({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{message}</div>
+    <div className="mb-4 rounded-md border border-rose-500/25 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">{message}</div>
   );
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{title}</h1>
-        {subtitle ? <p className="mt-1 max-w-2xl text-sm text-zinc-400">{subtitle}</p> : null}
+        <h1 className="text-2xl font-semibold tracking-tight text-white">{title}</h1>
+        {subtitle ? <p className="mt-1 max-w-2xl text-sm text-zinc-500">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -73,23 +74,23 @@ export function MetricCard({
   hint?: string;
   tone?: "neutral" | "success" | "critical" | "warning" | "agent";
 }) {
-  const toneRing = {
-    neutral: "border-zinc-700/80",
-    success: "border-emerald-500/30",
-    critical: "border-rose-500/35",
-    warning: "border-amber-500/35",
-    agent: "border-violet-500/35",
+  const accent = {
+    neutral: "border-l-zinc-600",
+    success: "border-l-emerald-600",
+    critical: "border-l-rose-500",
+    warning: "border-l-amber-500",
+    agent: "border-l-zinc-400",
   }[tone];
 
   return (
-    <div className={clsx("card", toneRing)}>
-      <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-50">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-zinc-500">{hint}</p> : null}
+    <div className={clsx("card border-l-2 pl-4", accent)}>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-white">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-zinc-600">{hint}</p> : null}
     </div>
   );
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">{children}</h2>;
+  return <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-600">{children}</h2>;
 }

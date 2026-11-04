@@ -63,8 +63,8 @@ export function DashboardPage() {
             <SectionTitle>Agent activity</SectionTitle>
             <ul className="space-y-2 text-xs text-zinc-400">
               {(data?.agentActivity ?? []).map((a: any) => (
-                <li key={a.id} className="flex gap-2 border-l-2 border-violet-500/40 pl-2">
-                  <span className="text-violet-300">{a.agent.displayName}</span>
+                <li key={a.id} className="flex gap-2 border-l-2 border-zinc-600 pl-2">
+                  <span className="text-zinc-200">{a.agent.displayName}</span>
                   <span>{a.action}</span>
                 </li>
               ))}

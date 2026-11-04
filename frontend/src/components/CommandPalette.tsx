@@ -48,7 +48,7 @@ export function CommandPalette({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm" onClick={() => onOpenChange(false)}>
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-600/80 bg-zinc-900 shadow-glow" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-600/80 bg-zinc-900 shadow-xl shadow-black/40" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-zinc-700/80 px-4 py-3">
           <input
             autoFocus
@@ -91,14 +91,14 @@ export function CommandTrigger({ onClick }: { onClick: () => void }) {
 }
 
 export function PresenceStack({ agents }: { agents: Array<{ displayName: string; agentType: string }> }) {
-  const colors = ["bg-violet-500", "bg-indigo-500", "bg-teal-500", "bg-emerald-500"];
+  const colors = ["bg-zinc-600", "bg-zinc-500", "bg-zinc-700", "bg-zinc-400"];
   return (
     <div className="flex items-center -space-x-2">
       {agents.slice(0, 4).map((a, i) => (
         <div
           key={a.displayName + i}
           title={`${a.displayName} (${a.agentType})`}
-          className={clsx("flex h-8 w-8 items-center justify-center rounded-full border-2 border-canvas text-[10px] font-semibold text-white", colors[i % colors.length])}
+          className={clsx("flex h-8 w-8 items-center justify-center rounded-full border-2 border-zinc-950 text-[10px] font-semibold text-white", colors[i % colors.length])}
         >
           {a.displayName.slice(0, 2).toUpperCase()}
         </div>

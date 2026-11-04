@@ -31,8 +31,10 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold">AQ</div>
-          <h1 className="text-2xl font-semibold tracking-tight">AgentQA Network</h1>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-white/[0.12] bg-white text-lg font-bold text-[#09090b]">
+            AQ
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">AgentQA Network</h1>
           <p className="mt-2 text-sm text-zinc-500">Collaborative QA command center · Switch-ready</p>
         </div>
         <form onSubmit={onSubmit} className="card space-y-4">
