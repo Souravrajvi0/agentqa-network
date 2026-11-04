@@ -111,6 +111,14 @@
     color: var(--text-body);
   }
 
+  .text-warning {
+    @apply font-medium text-amber-900 dark:text-amber-100;
+  }
+
+  .text-critical-inline {
+    @apply text-rose-700 dark:text-rose-300;
+  }
+
   .bg-canvas {
     background-color: var(--bg-canvas);
   }

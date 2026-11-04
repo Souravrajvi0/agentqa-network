@@ -324,8 +324,8 @@ export function AgentsPage() {
       <PageHeader title="Agent Collaboration View" subtitle="Register agents and connect Switch + MCP" />
       <ErrorText message={error} />
       {createdKey ? (
-        <div className="card mb-4 border border-amber-500/25 text-sm">
-          <p className="font-medium text-amber-100">Agent API key (copy now — shown once)</p>
+        <div className="card mb-4 border border-amber-500/30 text-sm dark:border-amber-500/25">
+          <p className="font-medium text-warning">Agent API key (copy now — shown once)</p>
           <code className="surface-inset mt-2 block break-all p-2 text-xs text-heading">{createdKey}</code>
           <p className="mt-2 text-xs text-label">Set AGENTQA_AGENT_API_KEY for MCP and switch-agent-runner.</p>
         </div>
@@ -391,7 +391,7 @@ export function ReleaseReadinessPage() {
           ))}
         </ul>
         {(data?.incompleteCritical ?? []).length ? (
-          <p className="mt-3 text-sm text-amber-200">Critical remaining: {(data.incompleteCritical as string[]).join(", ")}</p>
+          <p className="mt-3 text-sm text-warning">Critical remaining: {(data.incompleteCritical as string[]).join(", ")}</p>
         ) : null}
         <p className="mt-4 text-xs text-muted">{data?.disclaimer}</p>
       </div>

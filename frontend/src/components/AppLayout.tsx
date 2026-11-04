@@ -138,7 +138,7 @@ export function AppLayout() {
                   >
                     <span>{label}</span>
                     {slug === "developer-changes" && unread > 0 ? (
-                      <span className="chip border-amber-500/25 text-amber-100/90">{unread}</span>
+                      <span className="chip border-amber-500/40 text-amber-900 dark:border-amber-500/25 dark:text-amber-100/90">{unread}</span>
                     ) : null}
                   </NavLink>
                 ))

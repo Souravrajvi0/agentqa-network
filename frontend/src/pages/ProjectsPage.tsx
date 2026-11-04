@@ -21,7 +21,7 @@ export function ProjectsPage() {
       </div>
       <PageHeader title="Select project" subtitle="Choose a product workspace to open the QA command center" />
       {isLoading ? <p className="text-label">Loading projects…</p> : null}
-      {error ? <p className="text-rose-300">{(error as Error).message}</p> : null}
+      {error ? <p className="text-critical-inline">{(error as Error).message}</p> : null}
       <div className="grid gap-4 md:grid-cols-2">
         {data?.projects.map((p) => (
           <Link

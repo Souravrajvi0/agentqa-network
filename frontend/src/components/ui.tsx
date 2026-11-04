@@ -50,7 +50,7 @@ export function EmptyState({ title, description }: { title: string; description?
 export function ErrorText({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <div className="mb-4 rounded-sm border border-rose-500/20 bg-rose-950/40 px-3 py-2 text-[13px] text-rose-100">{message}</div>
+    <div className="mb-4 rounded-sm border border-rose-500/25 bg-rose-50 px-3 py-2 text-[13px] text-rose-800 dark:border-rose-500/20 dark:bg-rose-950/40 dark:text-rose-100">{message}</div>
   );
 }
 

@@ -53,7 +53,7 @@ export function MyWorkspacePage() {
       <PageHeader title="My Testing Workspace" subtitle="Claim work, record manual results, and track assignments" />
       <ErrorText message={error} />
       {isLoading ? <p className="text-label">Loading workspace…</p> : null}
-      {!buildId ? <p className="mb-4 text-sm text-amber-200">No current build — seed/migration may be incomplete.</p> : null}
+      {!buildId ? <p className="mb-4 text-sm text-warning">No current build — seed/migration may be incomplete.</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card">
@@ -127,7 +127,7 @@ export function MyWorkspacePage() {
                     Claim
                   </button>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-200">
+                  <p className="mt-2 text-xs text-muted">
                     Owned by{" "}
                     {item.assignment?.assigneeUser?.name ??
                       item.assignment?.assigneeAgent?.displayName ??
