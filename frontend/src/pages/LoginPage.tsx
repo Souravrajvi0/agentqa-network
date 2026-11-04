@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { api, setToken } from "../lib/api";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { api, getToken, setToken } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
 import { ErrorText } from "../components/ui";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "../lib/demoAccounts";
 
 export function LoginPage() {
+  if (getToken()) {
+    return <Navigate to="/projects" replace />;
+  }
+
   const [email, setEmail] = useState("qa.b@agentqa.demo");
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState<string | null>(null);

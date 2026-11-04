@@ -28,6 +28,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RootRedirect() {
+  return <Navigate to={getToken() ? "/projects" : "/login"} replace />;
+}
+
 function Guard({ slug, children }: { slug: string; children: React.ReactNode }) {
   return <RequireProjectRole slug={slug}>{children}</RequireProjectRole>;
 }
@@ -45,6 +49,7 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
@@ -80,7 +85,7 @@ export default function App() {
         <Route path="admin" element={<Guard slug="admin"><AdminPage /></Guard>} />
         <Route path="release-readiness" element={<Guard slug="release-readiness"><ReleaseReadinessPage /></Guard>} />
       </Route>
-      <Route path="*" element={<Navigate to="/projects" replace />} />
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }
