@@ -3,8 +3,9 @@ import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { mapGitHubWorkflowStatus, upsertCiRunFromGitHub } from "../services/ciRuns.js";
+import { registerWebhookDelivery } from "../services/webhookDeliveries.js";
 
-function verifyGitHubSignature(secret: string, rawBody: Buffer, signatureHeader: string | undefined): boolean {
+export function verifyGitHubSignature(secret: string, rawBody: Buffer, signatureHeader: string | undefined): boolean {
   if (!signatureHeader?.startsWith("sha256=")) return false;
   const expected = signatureHeader.slice("sha256=".length);
   const digest = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
@@ -22,7 +23,7 @@ githubWebhookRouter.post(
   asyncHandler(async (req: Request, res: Response) => {
     const rawBody = req.body as Buffer;
     if (!Buffer.isBuffer(rawBody)) {
-      return res.status(400).json({ error: "Raw body required" });
+      return res.status(400).json({ error: "Raw body required", code: "BAD_REQUEST" });
     }
 
     const deliveryId = req.headers["x-github-delivery"] as string | undefined;
@@ -33,7 +34,7 @@ githubWebhookRouter.post(
     try {
       payload = JSON.parse(rawBody.toString("utf8"));
     } catch {
-      return res.status(400).json({ error: "Invalid JSON" });
+      return res.status(400).json({ error: "Invalid JSON", code: "BAD_REQUEST" });
     }
 
     const repoFull = payload.repository?.full_name as string | undefined;
@@ -50,7 +51,18 @@ githubWebhookRouter.post(
     }
 
     if (!verifyGitHubSignature(integration.webhookSecret, rawBody, signature)) {
-      return res.status(401).json({ error: "Invalid signature" });
+      return res.status(401).json({ error: "Invalid signature", code: "UNAUTHORIZED" });
+    }
+
+    if (deliveryId) {
+      const { duplicate } = await registerWebhookDelivery({
+        provider: "GITHUB",
+        deliveryId,
+        projectId: integration.projectId,
+      });
+      if (duplicate) {
+        return res.json({ ok: true, deduplicated: true });
+      }
     }
 
     if (event !== "workflow_run") {
@@ -58,7 +70,7 @@ githubWebhookRouter.post(
     }
 
     const run = payload.workflow_run;
-    if (!run?.id) return res.status(400).json({ error: "Missing workflow_run" });
+    if (!run?.id) return res.status(400).json({ error: "Missing workflow_run", code: "BAD_REQUEST" });
 
     const mapped = mapGitHubWorkflowStatus(run.status, run.conclusion);
     await upsertCiRunFromGitHub({
@@ -74,7 +86,7 @@ githubWebhookRouter.post(
       conclusion: mapped.conclusion,
       startedAt: run.run_started_at ? new Date(run.run_started_at) : undefined,
       completedAt: run.updated_at ? new Date(run.updated_at) : undefined,
-      metadata: { runNumber: run.run_number, event: payload.action },
+      metadata: { runNumber: run.run_number, event: payload.action, source: "github_webhook" },
     });
 
     res.json({ ok: true });

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { requireProjectRole, requireUser } from "../lib/auth.js";
+import { requireProjectRole, requireUser, requireHumanUser } from "../lib/auth.js";
 import {
   getDeliveryDetail,
   getDeliveryPipeline,
@@ -108,7 +108,8 @@ retestRouter.post(
   "/:scopeId/approve",
   asyncHandler(async (req, res) => {
     const { projectId, scopeId } = req.params as { projectId: string; scopeId: string };
-    const auth = await requireUser(req);
+    const auth = await requireHumanUser(req);
+    await requireProjectRole(auth.userId, projectId, ["QA_LEAD", "ADMINISTRATOR"]);
     const body = z.object({ testCaseIds: z.array(z.string()).optional() }).parse(req.body ?? {});
     const result = await approveRetestScope({
       projectId,
@@ -126,7 +127,7 @@ ciRouter.post(
   "/overrides",
   asyncHandler(async (req, res) => {
     const { projectId } = req.params as { projectId: string };
-    const auth = await requireUser(req);
+    const auth = await requireHumanUser(req);
     const body = z
       .object({
         ciRunId: z.string(),
@@ -168,7 +169,7 @@ ciRouter.post(
       status: mapped.status,
       conclusion: mapped.conclusion,
       completedAt: new Date(),
-      metadata: { simulated: true },
+      metadata: { simulated: true, source: "agentqa_ci_simulate", note: "Not a GitHub webhook" },
     });
     if (body.changeId) {
       await prisma.ciRun.update({ where: { id: run.id }, data: { developerChangeId: body.changeId } });
@@ -202,7 +203,7 @@ githubIntegrationRouter.put(
   "/",
   asyncHandler(async (req, res) => {
     const { projectId } = req.params as { projectId: string };
-    const auth = await requireUser(req);
+    const auth = await requireHumanUser(req);
     await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR"]);
     const body = z
       .object({

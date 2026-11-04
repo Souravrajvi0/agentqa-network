@@ -123,8 +123,16 @@ export function DeliveryDetailPage() {
   if (isLoading) return <p className="text-faint text-[13px]">Loading…</p>;
   if (!data) return <EmptyState title="Change not found" />;
 
+  const isDemo = String(data.change.title).includes("[DEMO]");
+
   return (
     <div className="space-y-6">
+      {isDemo ? (
+        <div className="rounded-sm border border-amber-500/30 bg-amber-50 px-3 py-2 text-[12px] text-amber-950 dark:border-amber-500/25 dark:bg-amber-950/30 dark:text-amber-100">
+          Demo seeded workflow — CI rows marked <strong>DEMO_SEED</strong> are not from GitHub. Use{" "}
+          <code className="mono-id">POST /api/projects/:id/ci/simulate</code> for local webhook testing.
+        </div>
+      ) : null}
       <PageHeader
         title={data.change.title}
         subtitle={data.change.description}
@@ -173,6 +181,19 @@ export function DeliveryDetailPage() {
           </ul>
         </div>
       ) : null}
+      <div className="card">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-faint">CI history</h3>
+        <ul className="space-y-2 text-[13px]">
+          {(data.ciHistory ?? []).map((run: any) => (
+            <li key={run.id} className="flex flex-wrap items-center gap-2">
+              <span>{run.workflowName}</span>
+              <StatusBadge value={run.status} />
+              {run.conclusion ? <StatusBadge value={run.conclusion} /> : null}
+              <span className="text-faint">{run.provider}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="card">
         <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-faint">Timeline</h3>
         <ol className="space-y-3 border-l border-zinc-200 pl-4 dark:border-white/10">

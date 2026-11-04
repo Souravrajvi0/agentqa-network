@@ -5,6 +5,7 @@ import { recordDeliveryEvent } from "./deliveryTimeline.js";
 import { ciBlocksQa } from "./ciRuns.js";
 import { publishProjectEvent } from "../ws/hub.js";
 import { createNotification } from "./notifications.js";
+import { recordAudit } from "./audit.js";
 
 export async function proposeRetestScope(params: {
   projectId: string;
@@ -159,7 +160,12 @@ export async function createCiGateOverride(params: {
     throw new ForbiddenError("Only QA leads can override CI gates");
   }
 
-  return prisma.ciGateOverride.create({
+  const ciRun = await prisma.ciRun.findUnique({ where: { id: params.ciRunId } });
+  if (!ciRun || ciRun.projectId !== params.projectId) {
+    throw new NotFoundError("CI run not found");
+  }
+
+  const override = await prisma.ciGateOverride.create({
     data: {
       projectId: params.projectId,
       ciRunId: params.ciRunId,
@@ -169,4 +175,25 @@ export async function createCiGateOverride(params: {
       buildId: params.buildId,
     },
   });
+
+  await recordAudit({
+    projectId: params.projectId,
+    userId: params.actorUserId,
+    action: "ci_gate.override",
+    entityType: "CiGateOverride",
+    entityId: override.id,
+    details: { ciRunId: params.ciRunId, ciConclusion: ciRun.conclusion },
+  });
+
+  await recordDeliveryEvent({
+    projectId: params.projectId,
+    changeId: params.developerChangeId,
+    actorUserId: params.actorUserId,
+    kind: "ci.override",
+    title: "CI gate overridden (CI result unchanged)",
+    entityType: "CiGateOverride",
+    entityId: override.id,
+  });
+
+  return override;
 }

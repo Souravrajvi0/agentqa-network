@@ -80,6 +80,15 @@ export async function requireUser(req: Request): Promise<AuthContext & { userId:
   return ctx as AuthContext & { userId: string };
 }
 
+/** Rejects agent API keys — approvals and overrides must be human JWT sessions. */
+export async function requireHumanUser(req: Request): Promise<AuthContext & { userId: string }> {
+  const ctx = await resolveAuth(req);
+  if (!ctx?.userId || ctx.agentId) {
+    throw new ForbiddenError("Human user session required");
+  }
+  return ctx as AuthContext & { userId: string };
+}
+
 export async function requireProjectRole(
   userId: string,
   projectId: string,

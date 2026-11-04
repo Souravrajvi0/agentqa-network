@@ -196,6 +196,7 @@ model Project {
   qaHandoffs           QAHandoff[]
   ciGateOverrides      CiGateOverride[]
   deliveryEvents       DeliveryTimelineEvent[]
+  webhookDeliveries    InboundWebhookDelivery[]
 }
 
 model ProjectMember {
@@ -733,6 +734,19 @@ model GitHubProjectIntegration {
   updatedAt        DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model InboundWebhookDelivery {
+  id          String   @id @default(cuid())
+  provider    String
+  deliveryId  String
+  projectId   String?
+  processedAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, deliveryId])
+  @@index([projectId])
 }
 
 model CiRun {

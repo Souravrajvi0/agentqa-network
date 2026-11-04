@@ -56,15 +56,16 @@ export async function upsertCiRunFromGitHub(params: {
   });
 
   if (existing) {
-    const incomingRun = Number(params.externalRunId);
+    if (existing.status === "COMPLETED" && params.status !== "COMPLETED") {
+      return existing;
+    }
     const existingMeta = (existing.metadata ?? {}) as { runNumber?: number };
-    const existingRun = existingMeta.runNumber ?? Number(existing.externalRunId);
+    const incomingRunNumber =
+      typeof params.metadata?.runNumber === "number" ? params.metadata.runNumber : undefined;
     if (
-      existing.status === "COMPLETED" &&
-      params.status === "COMPLETED" &&
-      !Number.isNaN(incomingRun) &&
-      !Number.isNaN(existingRun) &&
-      incomingRun < existingRun
+      incomingRunNumber !== undefined &&
+      existingMeta.runNumber !== undefined &&
+      incomingRunNumber < existingMeta.runNumber
     ) {
       return existing;
     }

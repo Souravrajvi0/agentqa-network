@@ -3,7 +3,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { requireProjectRole, requireUser, resolveAuth } from "../lib/auth.js";
+import { requireProjectRole, requireUser, requireHumanUser, resolveAuth } from "../lib/auth.js";
 import { ForbiddenError, NotFoundError, ConflictError } from "../lib/errors.js";
 import { refreshCyclePriorities, getPrioritizedQueue } from "../services/prioritization.js";
 import {
@@ -1022,7 +1022,7 @@ apiRouter.post(
   "/projects/:projectId/developer-changes/:changeId/transition",
   asyncHandler(async (req, res) => {
     const { projectId, changeId } = req.params;
-    const auth = await requireUser(req);
+    const auth = await requireHumanUser(req);
     const body = z
       .object({
         status: z.enum([
@@ -1055,7 +1055,7 @@ apiRouter.post(
   "/projects/:projectId/developer-changes/:changeId/approve",
   asyncHandler(async (req, res) => {
     const { projectId, changeId } = req.params;
-    const auth = await requireUser(req);
+    const auth = await requireHumanUser(req);
     const body = z.object({ impactedTestIds: z.array(z.string()).optional() }).parse(req.body ?? {});
 
     const change = await transitionDeveloperChange({

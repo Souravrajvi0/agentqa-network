@@ -15,6 +15,7 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.deliveryTimelineEvent.deleteMany();
   await prisma.ciGateOverride.deleteMany();
+  await prisma.inboundWebhookDelivery.deleteMany();
   await prisma.testExecution.deleteMany();
   await prisma.qAHandoff.deleteMany();
   await prisma.retestScope.deleteMany();
@@ -320,45 +321,154 @@ async function main() {
     },
   });
 
+  const paymentsModule = await prisma.appModule.create({
+    data: {
+      projectId: project.id,
+      name: "Payments",
+      description: "Authorization, capture, and settlement",
+    },
+  });
+
+  const authExpFeature = await prisma.feature.create({
+    data: {
+      projectId: project.id,
+      moduleId: paymentsModule.id,
+      name: "Payment Authorization Expiry",
+      description: "Time-bound authorization holds for card payments",
+    },
+  });
+
+  const payTestDefs = [
+    { externalId: "TC-PAY-01", title: "Authorization hold created with correct TTL" },
+    { externalId: "TC-PAY-02", title: "Expired authorization cannot be captured" },
+    { externalId: "TC-PAY-03", title: "Expiry warning shown before hold ends" },
+    { externalId: "TC-PAY-04", title: "Capture succeeds before expiry" },
+    { externalId: "TC-PAY-05", title: "Audit event records authorization expiry" },
+  ] as const;
+
+  const payTestCases = [];
+  for (const def of payTestDefs) {
+    const tc = await prisma.testCase.create({
+      data: {
+        projectId: project.id,
+        moduleId: paymentsModule.id,
+        featureId: authExpFeature.id,
+        externalId: def.externalId,
+        title: def.title,
+        description: `[DEMO] ${def.title}`,
+        steps: [{ step: 1, action: "Execute scenario", expected: "Matches design" }],
+        expectedResults: "Matches approved design DD-PAY-AUTH-EXP",
+        priority: PriorityLevel.P1,
+        businessCriticality: 4,
+        tags: ["demo", "payments", "auth-expiry"],
+      },
+    });
+    payTestCases.push(tc);
+    const cycleCase = await prisma.testCycleCase.create({
+      data: { testCycleId: cycle.id, testCaseId: tc.id, plannedPriority: tc.priority },
+    });
+    await prisma.testAssignment.create({
+      data: { testCycleCaseId: cycleCase.id, status: "AVAILABLE" },
+    });
+  }
+
+  const authExpDecision = await prisma.designDecision.create({
+    data: {
+      projectId: project.id,
+      externalId: "DD-PAY-AUTH-EXP",
+      title: "[DEMO] Authorization expiry behavior",
+      description: "Demo design decision for Payment Authorization Expiry delivery walkthrough",
+      rationale: "Customers must see warnings and cannot capture after expiry",
+      expectedBehavior:
+        "Hold expires after 15 minutes; UI shows countdown; capture after expiry returns AUTH_EXPIRED",
+      featureId: authExpFeature.id,
+      authorUserId: devA.id,
+      approverUserId: qaLead.id,
+      status: DesignDecisionStatus.APPROVED,
+      effectiveVersion: "2.4.0",
+      testCases: {
+        create: payTestCases.map((tc) => ({ testCaseId: tc.id })),
+      },
+    },
+  });
+
+  const buildFix = await prisma.build.create({
+    data: {
+      releaseId: release.id,
+      label: "build-2402-fix",
+      gitRef: "main@expiry-fix-9f2",
+      commitSha: "expiry-fix-9f2",
+      branch: "fix/auth-expiry-warning",
+      repository: "demo/payments-api",
+      sourceProvider: "DEMO_SEED",
+      isCurrent: true,
+    },
+  });
+
+  await prisma.build.update({
+    where: { id: build.id },
+    data: { isCurrent: false, sourceProvider: "DEMO_SEED", commitSha: "expiry-feature-7d1" },
+  });
+
+  const retestTestIds = [...testCases.slice(0, 5).map((t) => t.id), ...payTestCases.map((t) => t.id)];
+
   const payChange = await prisma.developerChangeRequest.create({
     data: {
       projectId: project.id,
       releaseId: release.id,
-      buildId: build.id,
-      featureId: permFeature.id,
+      buildId: buildFix.id,
+      featureId: authExpFeature.id,
       authorUserId: devA.id,
-      title: "Permission validation updated",
+      title: "[DEMO] Payment Authorization Expiry",
       description:
-        "We updated permission validation. Restricted-user access and administrative overrides must be retested.",
+        "Demo delivery workflow (seeded data — not from GitHub). Implements shorter authorization TTL and UI warning. Local CI simulation: POST /api/projects/:id/ci/simulate.",
+      changeType: "FEATURE",
       urgency: PriorityLevel.P0,
-      status: "QA_PENDING",
-      branch: "feature/perm-validation",
+      status: "VERIFIED",
+      branch: "feature/auth-expiry",
       repository: "demo/payments-api",
-      commitSha: build.gitRef ?? "main@abc123",
-      submittedAt: new Date(Date.now() - 86400000),
-      approvedAt: new Date(Date.now() - 43200000),
-      impactedTestIds: [
-        testCases.find((t) => t.externalId === "TC-105")!.id,
-        testCases.find((t) => t.externalId === "TC-110")!.id,
-      ],
+      commitSha: "expiry-fix-9f2",
+      submittedAt: new Date(Date.now() - 5 * 86400000),
+      approvedAt: new Date(Date.now() - 4 * 86400000),
+      impactedTestIds: retestTestIds,
     },
   });
 
-  const ciRun = await prisma.ciRun.create({
+  const ciRunInitial = await prisma.ciRun.create({
     data: {
       projectId: project.id,
       developerChangeId: payChange.id,
       buildId: build.id,
+      provider: "DEMO_SEED",
       repository: "demo/payments-api",
-      externalRunId: "seed-run-1001",
+      externalRunId: "demo-ci-run-2401",
       workflowName: "ci.yml",
-      workflowUrl: "https://github.com/demo/payments-api/actions/runs/1001",
-      branch: "feature/perm-validation",
-      commitSha: build.gitRef ?? "main@abc123",
+      branch: "feature/auth-expiry",
+      commitSha: "expiry-feature-7d1",
       status: "COMPLETED",
       conclusion: "SUCCESS",
-      startedAt: new Date(Date.now() - 3600000),
-      completedAt: new Date(Date.now() - 3000000),
+      metadata: { demoSeed: true, label: "Initial feature CI (not a GitHub webhook)" },
+      startedAt: new Date(Date.now() - 3 * 86400000),
+      completedAt: new Date(Date.now() - 3 * 86400000 + 600000),
+    },
+  });
+
+  const ciRunFix = await prisma.ciRun.create({
+    data: {
+      projectId: project.id,
+      developerChangeId: payChange.id,
+      buildId: buildFix.id,
+      provider: "DEMO_SEED",
+      repository: "demo/payments-api",
+      externalRunId: "demo-ci-run-2402",
+      workflowName: "ci.yml",
+      branch: "fix/auth-expiry-warning",
+      commitSha: "expiry-fix-9f2",
+      status: "COMPLETED",
+      conclusion: "SUCCESS",
+      metadata: { demoSeed: true, label: "Fix verification CI (not a GitHub webhook)" },
+      startedAt: new Date(Date.now() - 86400000),
+      completedAt: new Date(Date.now() - 86400000 + 420000),
     },
   });
 
@@ -369,24 +479,103 @@ async function main() {
       buildId: build.id,
       version: 1,
       status: "APPROVED",
-      description: "Permission and admin override regression",
-      testCaseIds: payChange.impactedTestIds,
+      description: "[DEMO] Ten regression tests for authorization expiry",
+      testCaseIds: retestTestIds,
       proposedByUserId: devA.id,
       approvedByUserId: qaLead.id,
-      approvedAt: new Date(Date.now() - 1800000),
+      approvedAt: new Date(Date.now() - 2 * 86400000),
     },
   });
 
-  await prisma.qAHandoff.create({
+  const handoff = await prisma.qAHandoff.create({
     data: {
       projectId: project.id,
       developerChangeId: payChange.id,
       buildId: build.id,
-      ciRunId: ciRun.id,
+      ciRunId: ciRunInitial.id,
       retestScopeId: retestScope.id,
       createdByUserId: qaLead.id,
-      status: "PENDING",
-      summary: "Retest permission validation on current build",
+      assignedToUserId: qaC.id,
+      status: "COMPLETED",
+      summary: "[DEMO] Retest authorization expiry on build-2401",
+      acceptedAt: new Date(Date.now() - 2 * 86400000 + 3600000),
+      completedAt: new Date(Date.now() - 86400000),
+    },
+  });
+
+  const failedCase = payTestCases.find((t) => t.externalId === "TC-PAY-03")!;
+  const cycleCaseFailed = await prisma.testCycleCase.findFirstOrThrow({
+    where: { testCycleId: cycle.id, testCaseId: failedCase.id },
+  });
+
+  const failExecution = await prisma.testExecution.create({
+    data: {
+      testCycleCaseId: cycleCaseFailed.id,
+      buildId: build.id,
+      retestScopeId: retestScope.id,
+      qaHandoffId: handoff.id,
+      executedByUserId: qaC.id,
+      status: "FAILED",
+      actualResults: "Warning banner missing 60s before expiry",
+      notes: "[DEMO] Failed execution preserved on build-2401",
+      startedAt: new Date(Date.now() - 36 * 3600000),
+      completedAt: new Date(Date.now() - 35 * 3600000),
+    },
+  });
+
+  for (const tc of payTestCases.filter((t) => t.externalId !== "TC-PAY-03")) {
+    const cc = await prisma.testCycleCase.findFirstOrThrow({
+      where: { testCycleId: cycle.id, testCaseId: tc.id },
+    });
+    await prisma.testExecution.create({
+      data: {
+        testCycleCaseId: cc.id,
+        buildId: build.id,
+        retestScopeId: retestScope.id,
+        qaHandoffId: handoff.id,
+        executedByUserId: qaC.id,
+        status: "PASSED",
+        notes: "[DEMO] Passed on build-2401",
+        startedAt: new Date(Date.now() - 40 * 3600000),
+        completedAt: new Date(Date.now() - 39 * 3600000),
+      },
+    });
+  }
+
+  for (const tc of payTestCases) {
+    const cc = await prisma.testCycleCase.findFirstOrThrow({
+      where: { testCycleId: cycle.id, testCaseId: tc.id },
+    });
+    await prisma.testExecution.create({
+      data: {
+        testCycleCaseId: cc.id,
+        buildId: buildFix.id,
+        retestScopeId: retestScope.id,
+        executedByUserId: qaC.id,
+        status: "PASSED",
+        notes: "[DEMO] Retest passed on build-2402-fix",
+        startedAt: new Date(Date.now() - 12 * 3600000),
+        completedAt: new Date(Date.now() - 11 * 3600000),
+      },
+    });
+  }
+
+  await prisma.defect.create({
+    data: {
+      projectId: project.id,
+      externalId: "DEF-DEMO-0001",
+      summary: "[DEMO] Expiry warning banner not shown",
+      description: "Linked to failed execution on build-2401; fixed in build-2402-fix",
+      severity: "HIGH",
+      priority: PriorityLevel.P1,
+      testCaseId: failedCase.id,
+      buildId: build.id,
+      executionId: failExecution.id,
+      reporterUserId: qaC.id,
+      assigneeUserId: devA.id,
+      status: "VERIFIED",
+      expectedBehavior: authExpDecision.expectedBehavior,
+      actualBehavior: "No warning before expiry",
     },
   });
 
@@ -402,29 +591,14 @@ async function main() {
 
   await prisma.deliveryTimelineEvent.createMany({
     data: [
-      {
-        projectId: project.id,
-        changeId: payChange.id,
-        actorUserId: devA.id,
-        kind: "change.submitted",
-        title: "Change submitted",
-      },
-      {
-        projectId: project.id,
-        changeId: payChange.id,
-        actorUserId: qaLead.id,
-        kind: "change.approved",
-        title: "Change approved for CI",
-      },
-      {
-        projectId: project.id,
-        changeId: payChange.id,
-        actorType: "HUMAN",
-        kind: "ci.updated",
-        title: "CI ci.yml: COMPLETED (SUCCESS)",
-        entityType: "CiRun",
-        entityId: ciRun.id,
-      },
+      { projectId: project.id, changeId: payChange.id, actorUserId: devA.id, kind: "change.submitted", title: "[DEMO] Change submitted" },
+      { projectId: project.id, changeId: payChange.id, actorUserId: qaLead.id, kind: "change.approved", title: "[DEMO] Change approved" },
+      { projectId: project.id, changeId: payChange.id, kind: "ci.updated", title: "[DEMO] CI completed (DEMO_SEED)", entityType: "CiRun", entityId: ciRunInitial.id },
+      { projectId: project.id, changeId: payChange.id, actorUserId: qaLead.id, kind: "retest_scope.approved", title: "[DEMO] Ten tests approved", entityType: "RetestScope", entityId: retestScope.id },
+      { projectId: project.id, changeId: payChange.id, actorUserId: qaLead.id, kind: "handoff.created", title: "[DEMO] QA handoff completed", entityType: "QAHandoff", entityId: handoff.id },
+      { projectId: project.id, changeId: payChange.id, actorUserId: qaC.id, kind: "execution.failed", title: "[DEMO] TC-PAY-03 failed", entityType: "TestExecution", entityId: failExecution.id },
+      { projectId: project.id, changeId: payChange.id, kind: "ci.updated", title: "[DEMO] Fix build CI success", entityType: "CiRun", entityId: ciRunFix.id },
+      { projectId: project.id, changeId: payChange.id, actorUserId: qaC.id, kind: "change.verified", title: "[DEMO] Verification complete" },
     ],
   });
 
@@ -523,7 +697,8 @@ async function main() {
     "  admin@agentqa.demo, lead@agentqa.demo, qa.b@agentqa.demo (QA on PAY, Lead on ECOM), qa.c@agentqa.demo, qa.d@agentqa.demo, dev.a@agentqa.demo, viewer@agentqa.demo",
   );
   console.log(`Projects: PAY (${project.key}), ${ecom.key}, ${idp.key}`);
-  console.log(`Design decision seeded: ${decision.externalId}`);
+  console.log(`Design decisions seeded: ${decision.externalId}, ${authExpDecision.externalId}`);
+  console.log("Delivery demo change: [DEMO] Payment Authorization Expiry (provider DEMO_SEED — not GitHub)");
 }
 
 main()

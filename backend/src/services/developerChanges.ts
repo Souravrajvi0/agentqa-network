@@ -50,6 +50,13 @@ export async function transitionDeveloperChange(params: {
   if (["APPROVED", "REJECTED", "IN_REVIEW"].includes(params.toStatus) && !["QA_LEAD", "ADMINISTRATOR"].includes(member.role)) {
     throw new ForbiddenError("Only QA leads can review changes");
   }
+  if (
+    params.toStatus === "APPROVED" &&
+    change.authorUserId === params.actorUserId &&
+    member.role !== "ADMINISTRATOR"
+  ) {
+    throw new ForbiddenError("Developers cannot approve their own changes");
+  }
   if (["COMPLETED", "VERIFIED"].includes(params.toStatus) && !["QA_LEAD", "ADMINISTRATOR", "QA_ENGINEER"].includes(member.role)) {
     throw new ForbiddenError("QA role required to verify change");
   }
