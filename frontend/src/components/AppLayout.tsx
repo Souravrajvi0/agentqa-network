@@ -15,6 +15,8 @@ import { canAccessAdmin, navSlugsForRole } from "../lib/roles";
 
 const linkMeta: Record<string, string> = {
   dashboard: "Overview",
+  delivery: "Delivery",
+  "qa-inbox": "QA Inbox",
   "test-cases": "Test Cases",
   "my-workspace": "My Workspace",
   "team-board": "Team Board",
@@ -28,7 +30,7 @@ const linkMeta: Record<string, string> = {
 };
 
 const navSections: { title: string; slugs: string[] }[] = [
-  { title: "Command", slugs: ["dashboard"] },
+  { title: "Command", slugs: ["dashboard", "delivery", "qa-inbox"] },
   { title: "Testing", slugs: ["test-cases", "my-workspace", "team-board", "execution"] },
   { title: "Product", slugs: ["design-decisions", "developer-changes", "defects"] },
   { title: "Platform", slugs: ["agents", "release-readiness", "admin"] },

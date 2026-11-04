@@ -69,9 +69,54 @@ enum DesignDecisionStatus {
 enum ChangeRequestStatus {
   DRAFT
   SUBMITTED
+  IN_REVIEW
   APPROVED
   REJECTED
+  CI_PENDING
+  QA_PENDING
+  QA_IN_PROGRESS
+  VERIFIED
   COMPLETED
+}
+
+enum ActorType {
+  HUMAN
+  AGENT
+}
+
+enum CiRunStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum CiConclusion {
+  SUCCESS
+  FAILURE
+  CANCELLED
+  SKIPPED
+  NEUTRAL
+  TIMED_OUT
+  ACTION_REQUIRED
+}
+
+enum RetestScopeStatus {
+  DRAFT
+  PROPOSED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUPERSEDED
+  COMPLETED
+}
+
+enum QAHandoffStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
 }
 
 enum AgentType {
@@ -145,6 +190,12 @@ model Project {
   switchRoomLinks      SwitchRoomLink[]
   priorityRules        PriorityRuleConfig?
   environments         Environment[]
+  githubIntegration    GitHubProjectIntegration?
+  ciRuns               CiRun[]
+  retestScopes         RetestScope[]
+  qaHandoffs           QAHandoff[]
+  ciGateOverrides      CiGateOverride[]
+  deliveryEvents       DeliveryTimelineEvent[]
 }
 
 model ProjectMember {
@@ -226,6 +277,11 @@ model Build {
   releaseId String
   label     String
   gitRef    String?
+  commitSha String?
+  branch    String?
+  repository String?
+  artifactUrl String?
+  sourceProvider String? @default("MANUAL")
   isCurrent Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -233,6 +289,9 @@ model Build {
   executions TestExecution[]
   defects    Defect[]
   changeRequests DeveloperChangeRequest[]
+  ciRuns     CiRun[]
+  retestScopes RetestScope[]
+  qaHandoffs QAHandoff[]
 
   @@unique([releaseId, label])
 }
@@ -282,6 +341,7 @@ model TestCase {
   knowledge   KnowledgeEntry[]
   defects     Defect[]
   priorityRecs PriorityRecommendation[]
+  clarifications DesignClarification[]
 
   @@unique([projectId, externalId])
 }
@@ -368,6 +428,8 @@ model TestExecution {
   completedAt     DateTime?
   isStale         Boolean         @default(false)
   staleReason     String?
+  retestScopeId   String?
+  qaHandoffId     String?
   createdAt       DateTime        @default(now())
 
   testCycleCase TestCycleCase @relation(fields: [testCycleCaseId], references: [id], onDelete: Cascade)
@@ -375,6 +437,8 @@ model TestExecution {
   environment   Environment?  @relation(fields: [environmentId], references: [id])
   executedByUser User?        @relation(fields: [executedByUserId], references: [id])
   executedByAgent AgentRegistration? @relation(fields: [executedByAgentId], references: [id])
+  retestScope   RetestScope?  @relation(fields: [retestScopeId], references: [id])
+  qaHandoff     QAHandoff?    @relation(fields: [qaHandoffId], references: [id])
   evidence      TestEvidence[]
   defects       Defect[]
 }
@@ -473,7 +537,10 @@ model DesignDecisionHistory {
 model DesignClarification {
   id               String   @id @default(cuid())
   designDecisionId String
+  developerChangeId String?
+  testCaseId       String?
   requestedByUserId String
+  assignedReviewerUserId String?
   question         String
   response         String?
   status           String   @default("OPEN")
@@ -481,6 +548,8 @@ model DesignClarification {
   resolvedAt       DateTime?
 
   designDecision DesignDecision @relation(fields: [designDecisionId], references: [id], onDelete: Cascade)
+  developerChange DeveloperChangeRequest? @relation(fields: [developerChangeId], references: [id])
+  testCase TestCase? @relation(fields: [testCaseId], references: [id])
 }
 
 model DeveloperChangeRequest {
@@ -490,6 +559,9 @@ model DeveloperChangeRequest {
   buildId         String?
   featureId       String?
   authorUserId    String
+  authorAgentId   String?
+  createdByType   ActorType           @default(HUMAN)
+  changeType      String              @default("FEATURE")
   title           String
   description     String
   urgency         PriorityLevel       @default(P1)
@@ -498,6 +570,12 @@ model DeveloperChangeRequest {
   missingCoverage String?
   qaAcknowledged  Boolean             @default(false)
   approvedByUserId String?
+  branch          String?
+  repository      String?
+  commitSha       String?
+  pullRequestUrl  String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -506,6 +584,11 @@ model DeveloperChangeRequest {
   build   Build?   @relation(fields: [buildId], references: [id])
   feature Feature? @relation(fields: [featureId], references: [id])
   author  User     @relation(fields: [authorUserId], references: [id])
+  authorAgent AgentRegistration? @relation(fields: [authorAgentId], references: [id])
+  ciRuns  CiRun[]
+  retestScopes RetestScope[]
+  qaHandoffs QAHandoff[]
+  clarifications DesignClarification[]
 }
 
 model PriorityRecommendation {
@@ -584,6 +667,7 @@ model AgentRegistration {
   activities  AgentActivity[]
   assignments TestAssignment[]
   executions  TestExecution[]
+  authoredChanges DeveloperChangeRequest[]
 }
 
 model AgentActivity {
@@ -635,4 +719,135 @@ model AuditEvent {
   createdAt  DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+}
+
+model GitHubProjectIntegration {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  owner            String
+  repo             String
+  webhookSecret    String
+  defaultBranch    String   @default("main")
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model CiRun {
+  id                  String        @id @default(cuid())
+  projectId           String
+  developerChangeId   String?
+  buildId             String?
+  provider            String        @default("GITHUB_ACTIONS")
+  repository          String
+  externalRunId       String
+  deliveryId          String?
+  workflowName        String
+  workflowUrl         String?
+  branch              String?
+  commitSha           String?
+  status              CiRunStatus
+  conclusion          CiConclusion?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  metadata            Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  project         Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  developerChange DeveloperChangeRequest? @relation(fields: [developerChangeId], references: [id])
+  build           Build?                  @relation(fields: [buildId], references: [id])
+  qaHandoffs      QAHandoff[]
+
+  @@unique([projectId, provider, externalRunId])
+  @@index([projectId, developerChangeId])
+  @@index([projectId, commitSha])
+}
+
+model RetestScope {
+  id                String            @id @default(cuid())
+  projectId         String
+  developerChangeId String
+  buildId           String?
+  version           Int               @default(1)
+  status            RetestScopeStatus @default(DRAFT)
+  description       String?
+  testCaseIds       String[]          @default([])
+  testCaseRevisions Json?
+  proposedByUserId  String
+  proposedByType    ActorType         @default(HUMAN)
+  approvedByUserId  String?
+  createdAt         DateTime          @default(now())
+  approvedAt        DateTime?
+
+  project         Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  developerChange DeveloperChangeRequest @relation(fields: [developerChangeId], references: [id], onDelete: Cascade)
+  build           Build?                 @relation(fields: [buildId], references: [id])
+  qaHandoffs      QAHandoff[]
+  executions      TestExecution[]
+
+  @@index([developerChangeId, version])
+}
+
+model QAHandoff {
+  id                 String          @id @default(cuid())
+  projectId          String
+  developerChangeId  String
+  buildId            String?
+  ciRunId            String?
+  retestScopeId      String
+  createdByUserId    String?
+  createdByAgentId   String?
+  createdByType      ActorType       @default(HUMAN)
+  assignedToUserId   String?
+  assignedToAgentId  String?
+  status             QAHandoffStatus @default(PENDING)
+  summary            String?
+  acceptedAt         DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  project         Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  developerChange DeveloperChangeRequest @relation(fields: [developerChangeId], references: [id], onDelete: Cascade)
+  build           Build?                 @relation(fields: [buildId], references: [id])
+  ciRun           CiRun?                 @relation(fields: [ciRunId], references: [id])
+  retestScope     RetestScope            @relation(fields: [retestScopeId], references: [id])
+  executions      TestExecution[]
+
+  @@index([projectId, status])
+}
+
+model CiGateOverride {
+  id                String   @id @default(cuid())
+  projectId         String
+  developerChangeId String?
+  ciRunId           String
+  buildId           String?
+  actorUserId       String
+  reason            String
+  createdAt         DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryTimelineEvent {
+  id          String    @id @default(cuid())
+  projectId   String
+  changeId    String?
+  actorUserId String?
+  actorAgentId String?
+  actorType   ActorType @default(HUMAN)
+  kind        String
+  title       String
+  description String?
+  entityType  String?
+  entityId    String?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, changeId, createdAt])
 }

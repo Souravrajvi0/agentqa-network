@@ -13,9 +13,15 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.auditEvent.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.deliveryTimelineEvent.deleteMany();
+  await prisma.ciGateOverride.deleteMany();
+  await prisma.testExecution.deleteMany();
+  await prisma.qAHandoff.deleteMany();
+  await prisma.retestScope.deleteMany();
+  await prisma.ciRun.deleteMany();
+  await prisma.gitHubProjectIntegration.deleteMany();
   await prisma.agentActivity.deleteMany();
   await prisma.testEvidence.deleteMany();
-  await prisma.testExecution.deleteMany();
   await prisma.testAssignment.deleteMany();
   await prisma.priorityHistory.deleteMany();
   await prisma.priorityRecommendation.deleteMany();
@@ -314,7 +320,7 @@ async function main() {
     },
   });
 
-  await prisma.developerChangeRequest.create({
+  const payChange = await prisma.developerChangeRequest.create({
     data: {
       projectId: project.id,
       releaseId: release.id,
@@ -325,12 +331,101 @@ async function main() {
       description:
         "We updated permission validation. Restricted-user access and administrative overrides must be retested.",
       urgency: PriorityLevel.P0,
-      status: "SUBMITTED",
+      status: "QA_PENDING",
+      branch: "feature/perm-validation",
+      repository: "demo/payments-api",
+      commitSha: build.gitRef ?? "main@abc123",
+      submittedAt: new Date(Date.now() - 86400000),
+      approvedAt: new Date(Date.now() - 43200000),
       impactedTestIds: [
         testCases.find((t) => t.externalId === "TC-105")!.id,
         testCases.find((t) => t.externalId === "TC-110")!.id,
       ],
     },
+  });
+
+  const ciRun = await prisma.ciRun.create({
+    data: {
+      projectId: project.id,
+      developerChangeId: payChange.id,
+      buildId: build.id,
+      repository: "demo/payments-api",
+      externalRunId: "seed-run-1001",
+      workflowName: "ci.yml",
+      workflowUrl: "https://github.com/demo/payments-api/actions/runs/1001",
+      branch: "feature/perm-validation",
+      commitSha: build.gitRef ?? "main@abc123",
+      status: "COMPLETED",
+      conclusion: "SUCCESS",
+      startedAt: new Date(Date.now() - 3600000),
+      completedAt: new Date(Date.now() - 3000000),
+    },
+  });
+
+  const retestScope = await prisma.retestScope.create({
+    data: {
+      projectId: project.id,
+      developerChangeId: payChange.id,
+      buildId: build.id,
+      version: 1,
+      status: "APPROVED",
+      description: "Permission and admin override regression",
+      testCaseIds: payChange.impactedTestIds,
+      proposedByUserId: devA.id,
+      approvedByUserId: qaLead.id,
+      approvedAt: new Date(Date.now() - 1800000),
+    },
+  });
+
+  await prisma.qAHandoff.create({
+    data: {
+      projectId: project.id,
+      developerChangeId: payChange.id,
+      buildId: build.id,
+      ciRunId: ciRun.id,
+      retestScopeId: retestScope.id,
+      createdByUserId: qaLead.id,
+      status: "PENDING",
+      summary: "Retest permission validation on current build",
+    },
+  });
+
+  await prisma.gitHubProjectIntegration.create({
+    data: {
+      projectId: project.id,
+      owner: "demo",
+      repo: "payments-api",
+      webhookSecret: "demo-webhook-secret-change-me",
+      defaultBranch: "main",
+    },
+  });
+
+  await prisma.deliveryTimelineEvent.createMany({
+    data: [
+      {
+        projectId: project.id,
+        changeId: payChange.id,
+        actorUserId: devA.id,
+        kind: "change.submitted",
+        title: "Change submitted",
+      },
+      {
+        projectId: project.id,
+        changeId: payChange.id,
+        actorUserId: qaLead.id,
+        kind: "change.approved",
+        title: "Change approved for CI",
+      },
+      {
+        projectId: project.id,
+        changeId: payChange.id,
+        actorType: "HUMAN",
+        kind: "ci.updated",
+        title: "CI ci.yml: COMPLETED (SUCCESS)",
+        entityType: "CiRun",
+        entityId: ciRun.id,
+      },
+    ],
   });
 
   await prisma.defect.create({

@@ -10,6 +10,7 @@ import { logger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authRouter } from "./routes/auth.js";
 import { apiRouter, agentToolsRouter } from "./routes/api.js";
+import { githubWebhookRouter } from "./routes/githubWebhook.js";
 import { realtimeHub } from "./ws/hub.js";
 import { verifyToken } from "./lib/auth.js";
 import { userCanAccessProject } from "./lib/projectAccess.js";
@@ -19,6 +20,11 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
+app.use(
+  "/api/integrations/github/webhook",
+  express.raw({ type: "application/json", limit: "5mb" }),
+  githubWebhookRouter,
+);
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => {

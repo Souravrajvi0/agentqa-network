@@ -29,6 +29,16 @@ import {
   defaultCapabilities,
   parseCapabilities,
 } from "../lib/agentCapabilities.js";
+import {
+  ciRouter,
+  deliveryRouter,
+  githubIntegrationRouter,
+  qaInboxRouter,
+  retestRouter,
+} from "./delivery.js";
+import { evaluateReleaseReadiness } from "../services/releaseReadiness.js";
+import { getQaInbox } from "../services/deliveryPipeline.js";
+import { proposeRetestScope } from "../services/retestScope.js";
 
 export const apiRouter = Router();
 
@@ -1015,7 +1025,17 @@ apiRouter.post(
     const auth = await requireUser(req);
     const body = z
       .object({
-        status: z.enum(["SUBMITTED", "APPROVED", "REJECTED", "COMPLETED"]),
+        status: z.enum([
+          "SUBMITTED",
+          "IN_REVIEW",
+          "APPROVED",
+          "REJECTED",
+          "CI_PENDING",
+          "QA_PENDING",
+          "QA_IN_PROGRESS",
+          "VERIFIED",
+          "COMPLETED",
+        ]),
         impactedTestIds: z.array(z.string()).optional(),
       })
       .parse(req.body);
@@ -1048,6 +1068,12 @@ apiRouter.post(
     res.json({ change });
   }),
 );
+
+apiRouter.use("/projects/:projectId/delivery-pipeline", deliveryRouter);
+apiRouter.use("/projects/:projectId/qa-inbox", qaInboxRouter);
+apiRouter.use("/projects/:projectId/retest-scopes", retestRouter);
+apiRouter.use("/projects/:projectId/ci", ciRouter);
+apiRouter.use("/projects/:projectId/integrations/github", githubIntegrationRouter);
 
 apiRouter.get(
   "/projects/:projectId/defects",
@@ -1194,73 +1220,8 @@ apiRouter.get(
   asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     await authProject(req, projectId);
-
-    const activeCycle = await prisma.testCycle.findFirst({
-      where: { projectId, status: "ACTIVE" },
-      include: { release: { include: { builds: true } } },
-    });
-
-    if (!activeCycle) {
-      return res.json({
-        ready: false,
-        summary: "No active test cycle.",
-        blockers: ["Create or activate a test cycle"],
-      });
-    }
-
-    const currentBuild = activeCycle.release.builds.find((b) => b.isCurrent) ?? null;
-
-    const cases = await prisma.testCycleCase.findMany({
-      where: { testCycleId: activeCycle.id, plannedPriority: { in: ["P0", "P1"] } },
-      include: {
-        assignment: true,
-        testCase: true,
-        executions: currentBuild
-          ? {
-              where: { buildId: currentBuild.id },
-              orderBy: { createdAt: "desc" },
-              take: 1,
-            }
-          : { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-    });
-
-    const incompleteCritical = cases.filter((c) => c.assignment?.status !== "COMPLETED");
-    const staleOrMissing = cases.filter((c) => {
-      if (!currentBuild) return true;
-      const latest = c.executions[0];
-      if (!latest) return true;
-      if (latest.status === "FAILED" || latest.status === "BLOCKED") return true;
-      if (latest.buildId !== currentBuild.id) return true;
-      return false;
-    });
-
-    const openDefects = await prisma.defect.count({
-      where: { projectId, status: { notIn: ["CLOSED", "REJECTED"] }, priority: { in: ["P0", "P1"] } },
-    });
-
-    const blockers: string[] = [];
-    if (incompleteCritical.length) {
-      blockers.push(`${incompleteCritical.length} critical/high assignments not completed`);
-    }
-    if (currentBuild && staleOrMissing.length) {
-      blockers.push(
-        `${staleOrMissing.length} critical tests lack passing execution on build ${currentBuild.label}`,
-      );
-    }
-    if (openDefects) blockers.push(`${openDefects} open P0/P1 defects`);
-
-    res.json({
-      ready: blockers.length === 0,
-      release: activeCycle.release,
-      currentBuild,
-      incompleteCritical: incompleteCritical.map((c) => c.testCase.externalId),
-      staleOnCurrentBuild: staleOrMissing.map((c) => c.testCase.externalId),
-      openDefects,
-      blockers,
-      disclaimer:
-        "Readiness considers current build executions, open defects, and assignment completion — human QA lead approval still required.",
-    });
+    const report = await evaluateReleaseReadiness(projectId);
+    res.json(report);
   }),
 );
 
@@ -1596,34 +1557,105 @@ agentToolsRouter.get(
     const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
     if (!agent) throw new NotFoundError();
     assertAgentCapability(agent, "readQueue");
-    const activeCycle = await prisma.testCycle.findFirst({
-      where: { projectId: agent.projectId, status: "ACTIVE" },
-      include: { release: { include: { builds: true } } },
+    const report = await evaluateReleaseReadiness(agent.projectId);
+    res.json(report);
+  }),
+);
+
+agentToolsRouter.get(
+  "/qa-handoffs",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const data = await getQaInbox(agent.projectId, status);
+    res.json(data);
+  }),
+);
+
+agentToolsRouter.get(
+  "/ci-status",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readDesignDecisions");
+    const changeId = typeof req.query.changeId === "string" ? req.query.changeId : undefined;
+    const runs = await prisma.ciRun.findMany({
+      where: { projectId: agent.projectId, ...(changeId ? { developerChangeId: changeId } : {}) },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
     });
-    if (!activeCycle) {
-      return res.json({ ready: false, blockers: ["No active test cycle"] });
+    res.json({ runs });
+  }),
+);
+
+agentToolsRouter.post(
+  "/developer-changes",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string; userId?: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    if (agent.agentType !== "DEVELOPMENT") {
+      throw new ForbiddenError("Development agent required");
     }
-    const currentBuild = activeCycle.release.builds.find((b) => b.isCurrent) ?? null;
-    const cases = await prisma.testCycleCase.findMany({
-      where: { testCycleId: activeCycle.id, plannedPriority: { in: ["P0", "P1"] } },
-      include: {
-        assignment: true,
-        testCase: true,
-        executions: currentBuild
-          ? { where: { buildId: currentBuild.id }, orderBy: { createdAt: "desc" }, take: 1 }
-          : { orderBy: { createdAt: "desc" }, take: 1 },
+    assertAgentCapability(agent, "readDesignDecisions");
+    const body = z
+      .object({
+        title: z.string().min(1),
+        description: z.string().min(1),
+        branch: z.string().optional(),
+        repository: z.string().optional(),
+        commitSha: z.string().optional(),
+        impactedTestIds: z.array(z.string()).default([]),
+        submit: z.boolean().default(false),
+      })
+      .parse(req.body);
+    const change = await prisma.developerChangeRequest.create({
+      data: {
+        projectId: agent.projectId,
+        authorUserId: agent.ownerUserId,
+        authorAgentId: agent.id,
+        createdByType: "AGENT",
+        title: body.title,
+        description: body.description,
+        branch: body.branch,
+        repository: body.repository,
+        commitSha: body.commitSha,
+        impactedTestIds: body.impactedTestIds,
+        status: body.submit ? "SUBMITTED" : "DRAFT",
+        submittedAt: body.submit ? new Date() : undefined,
       },
     });
-    const blockers: string[] = [];
-    const incomplete = cases.filter((c) => c.assignment?.status !== "COMPLETED");
-    if (incomplete.length) blockers.push(`${incomplete.length} critical assignments incomplete`);
-    const stale = cases.filter((c) => {
-      const latest = c.executions[0];
-      return !latest || latest.status !== "PASSED" || (currentBuild && latest.buildId !== currentBuild.id);
-    });
-    if (currentBuild && stale.length) {
-      blockers.push(`${stale.length} critical tests not passing on ${currentBuild.label}`);
+    res.status(201).json({ change });
+  }),
+);
+
+agentToolsRouter.post(
+  "/retest-scope/propose",
+  asyncHandler(async (req, res) => {
+    const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    if (agent.agentType !== "DEVELOPMENT") {
+      throw new ForbiddenError("Development agent required");
     }
-    res.json({ ready: blockers.length === 0, blockers, currentBuild, release: activeCycle.release });
+    const body = z
+      .object({
+        changeId: z.string(),
+        testCaseIds: z.array(z.string()),
+        description: z.string().optional(),
+      })
+      .parse(req.body);
+    const scope = await proposeRetestScope({
+      projectId: agent.projectId,
+      changeId: body.changeId,
+      userId: agent.ownerUserId,
+      testCaseIds: body.testCaseIds,
+      description: body.description,
+    });
+    res.status(201).json({ scope });
   }),
 );

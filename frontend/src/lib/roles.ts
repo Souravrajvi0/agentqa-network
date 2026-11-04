@@ -8,6 +8,8 @@ export type ProjectRole =
 const navByRole: Record<ProjectRole, string[]> = {
   ADMINISTRATOR: [
     "dashboard",
+    "delivery",
+    "qa-inbox",
     "test-cases",
     "my-workspace",
     "team-board",
@@ -21,6 +23,8 @@ const navByRole: Record<ProjectRole, string[]> = {
   ],
   QA_LEAD: [
     "dashboard",
+    "delivery",
+    "qa-inbox",
     "test-cases",
     "my-workspace",
     "team-board",
@@ -34,6 +38,8 @@ const navByRole: Record<ProjectRole, string[]> = {
   ],
   QA_ENGINEER: [
     "dashboard",
+    "delivery",
+    "qa-inbox",
     "test-cases",
     "my-workspace",
     "execution",
@@ -44,6 +50,7 @@ const navByRole: Record<ProjectRole, string[]> = {
   ],
   DEVELOPER: [
     "dashboard",
+    "delivery",
     "test-cases",
     "design-decisions",
     "developer-changes",
@@ -51,7 +58,7 @@ const navByRole: Record<ProjectRole, string[]> = {
     "agents",
     "release-readiness",
   ],
-  VIEWER: ["dashboard", "test-cases", "defects", "release-readiness", "design-decisions"],
+  VIEWER: ["dashboard", "delivery", "test-cases", "defects", "release-readiness", "design-decisions"],
 };
 
 export function navSlugsForRole(role: ProjectRole | null | undefined): string[] {

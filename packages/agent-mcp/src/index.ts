@@ -150,7 +150,66 @@ server.tool(
 );
 
 server.tool(
-  "coordination_scan",
+  "get_ci_status",
+  "Retrieve CI runs for the agent project (optional changeId filter)",
+  { changeId: z.string().optional() },
+  async ({ changeId }) => {
+    const q = changeId ? `?changeId=${encodeURIComponent(changeId)}` : "";
+    const data = await agentFetch(`/api/agent-tools/ci-status${q}`);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "get_qa_handoffs",
+  "Retrieve QA handoffs for approved retest work",
+  { status: z.string().optional() },
+  async ({ status }) => {
+    const q = status ? `?status=${encodeURIComponent(status)}` : "";
+    const data = await agentFetch(`/api/agent-tools/qa-handoffs${q}`);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "create_developer_change",
+  "Create a developer change (development agents only)",
+  {
+    title: z.string(),
+    description: z.string(),
+    branch: z.string().optional(),
+    repository: z.string().optional(),
+    commitSha: z.string().optional(),
+    impactedTestIds: z.array(z.string()).optional(),
+    submit: z.boolean().optional(),
+  },
+  async (body) => {
+    const data = await agentFetch("/api/agent-tools/developer-changes", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
+  "propose_retest_scope",
+  "Propose retest scope for human QA lead approval",
+  {
+    changeId: z.string(),
+    testCaseIds: z.array(z.string()),
+    description: z.string().optional(),
+  },
+  async (body) => {
+    const data = await agentFetch("/api/agent-tools/retest-scope/propose", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  },
+);
+
+server.tool(
   "QA coordination scan for unassigned critical tests",
   {},
   async () => {
