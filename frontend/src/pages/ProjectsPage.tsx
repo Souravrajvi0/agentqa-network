@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
 import { EmptyState, ErrorText, MonoId, PageHeader } from "../components/ui";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { clearSession } from "../lib/session";
 import { formatRoleLabel, type ProjectRole } from "../lib/roles";
 
 type Project = {
@@ -17,7 +18,8 @@ type Project = {
 };
 
 export function ProjectsPage() {
-  const setProject = useAuthStore((s) => s.setSelectedProjectId);
+  const navigate = useNavigate();
+  const { user, setSelectedProjectId: setProject } = useAuthStore();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ key: "", name: "", description: "" });
@@ -49,7 +51,22 @@ export function ProjectsPage() {
 
   return (
     <div className="relative mx-auto min-h-screen max-w-4xl app-canvas p-6 lg:p-10">
-      <div className="absolute right-4 top-4 lg:right-10 lg:top-10">
+      <div className="absolute right-4 top-4 flex items-center gap-2 lg:right-10 lg:top-10">
+        {user ? (
+          <span className="hidden max-w-[160px] truncate text-[12px] text-label sm:inline" title={user.email}>
+            {user.name}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          className="btn-ghost text-[12px]"
+          onClick={() => {
+            clearSession();
+            navigate("/login");
+          }}
+        >
+          Sign out
+        </button>
         <ThemeToggle />
       </div>
       <PageHeader title="Projects" subtitle="Multi-project workspaces with project-scoped roles" />

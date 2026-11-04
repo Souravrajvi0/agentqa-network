@@ -9,6 +9,7 @@ import { NavIcon } from "./NavIcon";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import clsx from "clsx";
 import { api } from "../lib/api";
+import { clearSession } from "../lib/session";
 import { useEffect, useMemo, useState } from "react";
 import { useProjectRole } from "../hooks/useProjectRole";
 import { canAccessAdmin, navSlugsForRole } from "../lib/roles";
@@ -38,7 +39,7 @@ const navSections: { title: string; slugs: string[] }[] = [
 
 export function AppLayout() {
   const { projectId: routeProjectId = "" } = useParams();
-  const { user, selectedProjectId, setUser, setSelectedProjectId } = useAuthStore();
+  const { user, selectedProjectId, setSelectedProjectId } = useAuthStore();
   const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -138,6 +139,23 @@ export function AppLayout() {
             </button>
             ) : null}
             <NotificationBell />
+            {user ? (
+              <div className="hidden items-center gap-1 border-l pl-2 sm:flex" style={{ borderColor: "var(--divider)" }}>
+                <span className="max-w-[120px] truncate text-[11px] text-label" title={user.email}>
+                  {user.name}
+                </span>
+                <button
+                  type="button"
+                  className="btn-ghost px-2 text-[12px]"
+                  onClick={() => {
+                    clearSession();
+                    navigate("/login");
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
@@ -177,8 +195,7 @@ export function AppLayout() {
           <button
             className="btn-ghost mt-8 w-full text-label"
             onClick={() => {
-              setUser(null);
-              localStorage.removeItem("agentqa_token");
+              clearSession();
               navigate("/login");
             }}
           >
