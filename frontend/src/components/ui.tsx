@@ -1,34 +1,51 @@
 import clsx from "clsx";
 
-/** Muted semantic badges — color only where it carries meaning */
+/** Priority badges — high contrast; urgency reads at a glance */
 const priorityStyles: Record<string, string> = {
-  P0: "border-rose-500/30 bg-rose-950/40 text-rose-100",
-  P1: "border-amber-500/30 bg-amber-950/35 text-amber-50",
-  P2: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300",
-  P3: "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-white/[0.06] dark:bg-transparent dark:text-zinc-500",
+  P0:
+    "border-rose-700 bg-rose-600 text-white shadow-[0_0_0_1px_rgba(190,18,60,0.25)] dark:border-rose-400/60 dark:bg-rose-500/25 dark:text-rose-100 dark:shadow-none",
+  P1:
+    "border-amber-600 bg-amber-500 text-amber-950 shadow-[0_0_0_1px_rgba(217,119,6,0.3)] dark:border-amber-400/55 dark:bg-amber-500/20 dark:text-amber-100 dark:shadow-none",
+  P2:
+    "border-zinc-400 bg-zinc-200 text-zinc-800 dark:border-white/15 dark:bg-white/[0.07] dark:text-zinc-200",
+  P3:
+    "border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-400",
 };
 
 const statusStyles: Record<string, string> = {
   AVAILABLE: "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-400",
   CLAIMED: "border-zinc-300 bg-zinc-100 text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200",
   IN_PROGRESS: "border-zinc-300 bg-zinc-100 text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100",
-  COMPLETED: "border-emerald-500/25 bg-emerald-950/30 text-emerald-100",
-  BLOCKED: "border-amber-500/25 bg-amber-950/25 text-amber-50",
-  PASSED: "border-emerald-500/25 bg-emerald-950/30 text-emerald-100",
-  FAILED: "border-rose-500/25 bg-rose-950/30 text-rose-100",
-  NOT_RUN: "border-zinc-200 bg-transparent text-zinc-400 dark:border-white/[0.06] dark:text-zinc-600",
-  SUBMITTED: "border-amber-500/25 bg-amber-950/25 text-amber-50",
-  APPROVED: "border-emerald-500/25 bg-emerald-950/30 text-emerald-100",
+  COMPLETED:
+    "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-100",
+  BLOCKED:
+    "border-amber-600 bg-amber-100 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-100",
+  PASSED:
+    "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-100",
+  FAILED:
+    "border-rose-700 bg-rose-600 text-white dark:border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-100",
+  NOT_RUN: "border-zinc-200 bg-transparent text-zinc-500 dark:border-white/[0.06] dark:text-zinc-600",
+  SUBMITTED:
+    "border-amber-600 bg-amber-100 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-100",
+  APPROVED:
+    "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-100",
   NEW: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300",
 };
 
 export function StatusBadge({ value }: { value: string }) {
+  const isPriority = /^P[0-3]$/.test(value);
   const style =
     priorityStyles[value] ??
     statusStyles[value] ??
     "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-400";
   return (
-    <span className={clsx("inline-flex h-5 items-center rounded-sm border px-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]", style)}>
+    <span
+      className={clsx(
+        "inline-flex h-5 items-center rounded-sm border px-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]",
+        isPriority && (value === "P0" || value === "P1") && "font-bold tracking-[0.1em]",
+        style,
+      )}
+    >
       {value.replace(/_/g, " ")}
     </span>
   );
