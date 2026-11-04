@@ -45,7 +45,7 @@ export function AdminPage() {
     return (
       <div>
         <PageHeader title="Administration" subtitle="Restricted to QA Lead and Administrator roles" />
-        <p className="text-sm text-zinc-400">You do not have permission to manage project integrations.</p>
+        <p className="text-sm text-label">You do not have permission to manage project integrations.</p>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function AdminPage() {
       <ErrorText message={error} />
       <section className="card mb-4">
         <h2 className="mb-2 font-medium">Project members</h2>
-        <ul className="text-sm text-zinc-300">
+        <ul className="text-sm text-body-theme">
           {(me?.user?.projectMembers ?? [])
             .filter((m: any) => m.project?.id === projectId)
             .map((m: any) => (
@@ -65,7 +65,7 @@ export function AdminPage() {
               </li>
             ))}
         </ul>
-        <p className="mt-2 text-xs text-zinc-500">Member management API can be extended; seed accounts cover demo roles.</p>
+        <p className="mt-2 text-xs text-muted">Member management API can be extended; seed accounts cover demo roles.</p>
       </section>
       <section className="card mb-4 space-y-2">
         <h2 className="font-medium">Link Switch room</h2>
@@ -78,7 +78,7 @@ export function AdminPage() {
       </section>
       <section className="card">
         <h2 className="mb-2 font-medium">QA coordination</h2>
-        <p className="mb-3 text-sm text-zinc-400">Scan for unassigned critical tests and notify QA leads.</p>
+        <p className="mb-3 text-sm text-label">Scan for unassigned critical tests and notify QA leads.</p>
         <button className="btn-primary" onClick={() => scan.mutate()}>
           Run coordination scan
         </button>

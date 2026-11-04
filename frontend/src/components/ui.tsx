@@ -92,7 +92,7 @@ export function MetricCard({
         {label}
       </p>
       <p className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-heading">{value}</p>
-      {hint ? <p className="mt-2 text-[11px] text-faint">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-[11px] text-muted">{hint}</p> : null}
     </div>
   );
 }

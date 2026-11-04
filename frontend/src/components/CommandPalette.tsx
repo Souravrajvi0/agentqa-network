@@ -52,7 +52,7 @@ export function CommandPalette({
         <div className="border-b px-4 py-3" style={{ borderColor: "var(--divider)" }}>
           <input
             autoFocus
-            className="w-full bg-transparent text-[13px] outline-none placeholder:text-zinc-600"
+            className="w-full bg-transparent text-[13px] text-heading outline-none placeholder:text-muted"
             placeholder="Search views… (tests & defects search coming soon)"
             value={q}
             onChange={(e) => setQ(e.target.value)}

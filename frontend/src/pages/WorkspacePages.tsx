@@ -52,7 +52,7 @@ export function MyWorkspacePage() {
     <div>
       <PageHeader title="My Testing Workspace" subtitle="Claim work, record manual results, and track assignments" />
       <ErrorText message={error} />
-      {isLoading ? <p className="text-zinc-400">Loading workspace…</p> : null}
+      {isLoading ? <p className="text-label">Loading workspace…</p> : null}
       {!buildId ? <p className="mb-4 text-sm text-amber-200">No current build — seed/migration may be incomplete.</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -65,7 +65,7 @@ export function MyWorkspacePage() {
                   <p className="font-medium">{a.testCycleCase.testCase.externalId}</p>
                   <StatusBadge value={a.status} />
                 </div>
-                <p className="text-zinc-400">{a.testCycleCase.testCase.title}</p>
+                <p className="text-label">{a.testCycleCase.testCase.title}</p>
                 {buildId ? (
                   <div className="mt-3 space-y-2">
                     <textarea
@@ -101,7 +101,7 @@ export function MyWorkspacePage() {
               </li>
             ))}
             {!data?.assignments?.length && !isLoading ? (
-              <p className="text-zinc-500">No active assignments — claim a recommended test.</p>
+              <p className="text-muted">No active assignments — claim a recommended test.</p>
             ) : null}
           </ul>
         </section>
@@ -114,7 +114,7 @@ export function MyWorkspacePage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{item.testCase.externalId}</p>
-                    <p className="text-zinc-400">{item.testCase.title}</p>
+                    <p className="text-label">{item.testCase.title}</p>
                   </div>
                   <StatusBadge value={item.recommendation?.recommended ?? item.testCase.priority} />
                 </div>
@@ -157,7 +157,7 @@ export function TeamBoardPage() {
   return (
     <div>
       <PageHeader title="Team Testing Board" subtitle="Assignments, agents, and duplicate-work visibility" />
-      {isLoading ? <p className="text-zinc-400">Loading board…</p> : null}
+      {isLoading ? <p className="text-label">Loading board…</p> : null}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="card lg:col-span-2">
           <h2 className="mb-3 font-medium">{data?.cycle?.name ?? "Cycle"}</h2>
@@ -166,11 +166,11 @@ export function TeamBoardPage() {
               <li key={c.id} className="list-row flex items-center justify-between gap-4 py-2.5">
                 <div>
                   <p className="font-medium">{c.testCase.externalId}</p>
-                  <p className="text-zinc-400">{c.testCase.title}</p>
+                  <p className="text-label">{c.testCase.title}</p>
                 </div>
                 <div className="text-right">
                   <StatusBadge value={c.assignment?.status ?? "AVAILABLE"} />
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-muted">
                     {c.assignment?.assigneeUser?.name ?? c.assignment?.assigneeAgent?.displayName ?? "Unassigned"}
                   </p>
                 </div>
@@ -184,13 +184,13 @@ export function TeamBoardPage() {
             {(data?.agents ?? []).map((a: any) => (
               <li key={a.id} className="list-row py-2.5">
                 <p className="font-medium">{a.displayName}</p>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-label">
                   {a.agentType} · owner {a.owner.name}
                 </p>
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-xs text-zinc-500">{duplicateWarnings.length} active claims in this cycle</p>
+          <p className="mt-4 text-xs text-muted">{duplicateWarnings.length} active claims in this cycle</p>
         </section>
       </div>
     </div>

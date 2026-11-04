@@ -28,7 +28,7 @@ export function DashboardPage() {
         }
       />
 
-      {isLoading ? <p className="text-zinc-500">Loading telemetry…</p> : null}
+      {isLoading ? <p className="text-label">Loading telemetry…</p> : null}
 
       <div className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Testing progress" value={`${progressPct}%`} hint={`${stats.completed ?? 0} / ${stats.total ?? 0} completed`} tone="success" />
@@ -46,7 +46,7 @@ export function DashboardPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <MonoId>{item.testCase.externalId}</MonoId>
-                    <p className="mt-1 text-sm text-zinc-200">{item.testCase.title}</p>
+                    <p className="mt-1 text-sm text-heading">{item.testCase.title}</p>
                   </div>
                   <StatusBadge value={item.recommendation?.recommended ?? item.testCase.priority} />
                 </div>
@@ -61,14 +61,14 @@ export function DashboardPage() {
         <section className="card lg:col-span-2 space-y-6">
           <div>
             <SectionTitle>Agent activity</SectionTitle>
-            <ul className="space-y-2 text-xs text-zinc-400">
+            <ul className="space-y-2 text-xs text-label">
               {(data?.agentActivity ?? []).map((a: any) => (
-                <li key={a.id} className="flex gap-2 border-l-2 border-zinc-600 pl-2">
-                  <span className="text-zinc-200">{a.agent.displayName}</span>
-                  <span>{a.action}</span>
+                <li key={a.id} className="flex gap-2 border-l-2 pl-2" style={{ borderColor: "var(--border-strong)" }}>
+                  <span className="font-medium text-heading">{a.agent.displayName}</span>
+                  <span className="text-body-theme">{a.action}</span>
                 </li>
               ))}
-              {!data?.agentActivity?.length ? <li className="text-zinc-600">No recent agent events</li> : null}
+              {!data?.agentActivity?.length ? <li className="text-muted">No recent agent events</li> : null}
             </ul>
           </div>
           <div>
@@ -77,10 +77,10 @@ export function DashboardPage() {
               {(data?.recentChanges ?? []).map((c: any) => (
                 <li key={c.id} className="list-row py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-zinc-200">{c.title}</p>
+                    <p className="font-medium text-heading">{c.title}</p>
                     <StatusBadge value={c.urgency} />
                   </div>
-                  <p className="text-xs text-zinc-500">{c.author?.name}</p>
+                  <p className="text-xs text-muted">{c.author?.name}</p>
                 </li>
               ))}
             </ul>

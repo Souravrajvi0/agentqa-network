@@ -60,12 +60,12 @@ export function DesignDecisionsPage() {
               </h2>
               <StatusBadge value={d.status} />
             </div>
-            <p className="mt-2 text-sm text-zinc-300">{d.description}</p>
+            <p className="mt-2 text-sm text-body-theme">{d.description}</p>
             <p className="mt-2 text-sm">
-              <span className="text-zinc-400">Expected:</span> {d.expectedBehavior}
+              <span className="text-label">Expected:</span> {d.expectedBehavior}
             </p>
             {(d.clarifications ?? []).length ? (
-              <ul className="mt-3 space-y-1 text-xs text-zinc-400">
+              <ul className="mt-3 space-y-1 text-xs text-label">
                 {d.clarifications.map((c: any) => (
                   <li key={c.id}>
                     Q: {c.question} ({c.status})
@@ -181,8 +181,8 @@ export function DeveloperChangesPage() {
               <h2 className="font-medium">{c.title}</h2>
               <StatusBadge value={c.urgency} />
             </div>
-            <p className="mt-2 text-sm text-zinc-300">{c.description}</p>
-            <p className="mt-1 text-xs text-zinc-500">Status: {c.status}</p>
+            <p className="mt-2 text-sm text-body-theme">{c.description}</p>
+            <p className="mt-1 text-xs text-muted">Status: {c.status}</p>
             {c.status === "SUBMITTED" && (user?.globalRole === "QA_LEAD" || user?.globalRole === "ADMINISTRATOR") ? (
               <button className="btn-primary mt-3" onClick={() => approve(c.id)}>
                 QA Lead approve & refresh queue
@@ -268,7 +268,7 @@ export function DefectsPage() {
                 <p className="font-medium">
                   {d.externalId} · {d.summary}
                 </p>
-                <p className="text-zinc-400">{d.testCase?.externalId}</p>
+                <p className="text-label">{d.testCase?.externalId}</p>
               </div>
               <StatusBadge value={d.status} />
             </div>
@@ -326,8 +326,8 @@ export function AgentsPage() {
       {createdKey ? (
         <div className="card mb-4 border border-amber-500/25 text-sm">
           <p className="font-medium text-amber-100">Agent API key (copy now — shown once)</p>
-          <code className="mt-2 block break-all rounded bg-[#0c0c0e] p-2 text-xs">{createdKey}</code>
-          <p className="mt-2 text-xs text-zinc-400">Set AGENTQA_AGENT_API_KEY for MCP and switch-agent-runner.</p>
+          <code className="surface-inset mt-2 block break-all p-2 text-xs text-heading">{createdKey}</code>
+          <p className="mt-2 text-xs text-label">Set AGENTQA_AGENT_API_KEY for MCP and switch-agent-runner.</p>
         </div>
       ) : null}
       <section className="card mb-4 grid gap-2 md:grid-cols-2">
@@ -350,15 +350,15 @@ export function AgentsPage() {
             {(data?.agents ?? []).map((a: any) => (
               <li key={a.id} className="rounded border border-white/[0.08] p-2">
                 <p className="font-medium">{a.displayName}</p>
-                <p className="text-xs text-zinc-400">{a.agentType}</p>
-                <p className="text-xs text-zinc-500">Switch: {a.switchAgentId ?? "—"}</p>
+                <p className="text-xs text-label">{a.agentType}</p>
+                <p className="text-xs text-muted">Switch: {a.switchAgentId ?? "—"}</p>
               </li>
             ))}
           </ul>
         </section>
         <section className="card">
           <h2 className="mb-2 font-medium">Switch rooms</h2>
-          <ul className="space-y-2 text-sm text-zinc-300">
+          <ul className="space-y-2 text-sm text-body-theme">
             {(data?.rooms ?? []).map((r: any) => (
               <li key={r.id}>
                 {r.roomName} ({r.roomId})
@@ -382,10 +382,10 @@ export function ReleaseReadinessPage() {
   return (
     <div>
       <PageHeader title="Release Readiness" subtitle="Coverage and blockers with explicit human approval disclaimer" />
-      {isLoading ? <p className="text-zinc-400">Calculating readiness…</p> : null}
+      {isLoading ? <p className="text-label">Calculating readiness…</p> : null}
       <div className="card">
         <p className="text-lg font-medium">{data?.ready ? "Suggested ready" : "Not ready"}</p>
-        <ul className="mt-3 list-disc pl-5 text-sm text-zinc-300">
+        <ul className="mt-3 list-disc pl-5 text-sm text-body-theme">
           {(data?.blockers ?? []).map((b: string) => (
             <li key={b}>{b}</li>
           ))}
@@ -393,7 +393,7 @@ export function ReleaseReadinessPage() {
         {(data?.incompleteCritical ?? []).length ? (
           <p className="mt-3 text-sm text-amber-200">Critical remaining: {(data.incompleteCritical as string[]).join(", ")}</p>
         ) : null}
-        <p className="mt-4 text-xs text-zinc-500">{data?.disclaimer}</p>
+        <p className="mt-4 text-xs text-muted">{data?.disclaimer}</p>
       </div>
     </div>
   );
@@ -424,7 +424,7 @@ export function ExecutionPage() {
     <div>
       <PageHeader title="Test Execution Center" subtitle="Run approved Playwright automation and inspect evidence" />
       <ErrorText message={error} />
-      {isLoading ? <p className="text-zinc-400">Loading automation catalog…</p> : null}
+      {isLoading ? <p className="text-label">Loading automation catalog…</p> : null}
       <ul className="space-y-3">
         {(data?.automatedCases ?? []).map((row: any) => {
           const last = row.executions?.[0];
@@ -433,8 +433,8 @@ export function ExecutionPage() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium">{row.testCase.externalId}</p>
-                  <p className="text-zinc-400">{row.testCase.title}</p>
-                  <p className="mt-1 text-xs text-zinc-500">Command: {row.testCase.automationCommand}</p>
+                  <p className="text-label">{row.testCase.title}</p>
+                  <p className="mt-1 text-xs text-muted">Command: {row.testCase.automationCommand}</p>
                 </div>
                 {last ? <StatusBadge value={last.status} /> : <StatusBadge value="NOT_RUN" />}
               </div>
@@ -454,7 +454,7 @@ export function ExecutionPage() {
                 </button>
               ) : null}
               {last?.evidence?.[0]?.content ? (
-                <pre className="mt-2 max-h-24 overflow-auto rounded bg-[#0c0c0e] p-2 text-xs text-zinc-400">
+                <pre className="surface-inset mt-2 max-h-24 overflow-auto p-2 text-xs text-label">
                   {String(last.evidence[0].content).slice(0, 400)}
                 </pre>
               ) : null}

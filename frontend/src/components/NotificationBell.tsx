@@ -39,7 +39,7 @@ export function NotificationBell() {
         </summary>
         <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-sm border-theme bg-panel p-1.5 shadow-glow">
           {(data?.notifications ?? []).length === 0 ? (
-            <p className="p-2 text-xs text-zinc-500">No notifications yet</p>
+            <p className="p-2 text-xs text-muted">No notifications yet</p>
           ) : (
             <ul className="space-y-2">
               {(data?.notifications ?? []).map((n) => (

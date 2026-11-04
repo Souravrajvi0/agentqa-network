@@ -66,7 +66,7 @@ export function TestCaseDetailPage() {
             <p>
               Priority: <StatusBadge value={tc.priority} />
             </p>
-            <p className="text-zinc-300">{tc.description}</p>
+            <p className="text-body-theme">{tc.description}</p>
             <pre className="surface-inset overflow-auto p-3 text-xs">{JSON.stringify(tc.steps, null, 2)}</pre>
           </section>
           <section className="card">
@@ -75,12 +75,12 @@ export function TestCaseDetailPage() {
               {(tc.designLinks ?? []).map((d: any) => (
                 <li key={d.designDecision.id}>
                   <p className="font-medium">{d.designDecision.externalId}</p>
-                  <p className="text-zinc-500">{d.designDecision.title}</p>
+                  <p className="text-muted">{d.designDecision.title}</p>
                 </li>
               ))}
             </ul>
             <h3 className="mb-2 mt-4 font-medium">Knowledge</h3>
-            <ul className="space-y-2 text-sm text-zinc-300">
+            <ul className="space-y-2 text-sm text-body-theme">
               {(tc.knowledge ?? []).map((k: any) => (
                 <li key={k.id}>
                   <p className="font-medium">{k.title}</p>
