@@ -99,6 +99,15 @@ async function main() {
     },
   });
 
+  const viewer = await prisma.user.create({
+    data: {
+      email: "viewer@agentqa.demo",
+      name: "Vera Viewer",
+      passwordHash,
+      globalRole: GlobalRole.QA_ENGINEER,
+    },
+  });
+
   const project = await prisma.project.create({
     data: {
       key: "PAY",
@@ -112,6 +121,7 @@ async function main() {
           { userId: qaC.id, role: ProjectRole.QA_ENGINEER },
           { userId: qaD.id, role: ProjectRole.QA_ENGINEER },
           { userId: devA.id, role: ProjectRole.DEVELOPER },
+          { userId: viewer.id, role: ProjectRole.VIEWER },
         ],
       },
       priorityRules: {
@@ -339,9 +349,85 @@ async function main() {
     },
   });
 
+  const ecom = await prisma.project.create({
+    data: {
+      key: "ECOM",
+      name: "E-commerce Platform",
+      description: "Checkout, catalog, and fulfillment QA workspace",
+      members: {
+        create: [
+          { userId: admin.id, role: ProjectRole.ADMINISTRATOR },
+          { userId: qaLead.id, role: ProjectRole.QA_LEAD },
+          { userId: qaB.id, role: ProjectRole.QA_LEAD },
+          { userId: qaC.id, role: ProjectRole.QA_ENGINEER },
+          { userId: devA.id, role: ProjectRole.DEVELOPER },
+        ],
+      },
+      priorityRules: { create: { weights: { businessCriticality: 10, moduleChange: 18, untested: 16 } } },
+    },
+  });
+
+  const ecomRelease = await prisma.release.create({
+    data: {
+      projectId: ecom.id,
+      name: "Holiday Release",
+      version: "1.8.0",
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.build.create({
+    data: { releaseId: ecomRelease.id, label: "ecom-build-180", gitRef: "main@ecom1", isCurrent: true },
+  });
+
+  const idp = await prisma.project.create({
+    data: {
+      key: "IDP",
+      name: "Internal Developer Platform",
+      description: "CI/CD, developer portals, and internal APIs",
+      members: {
+        create: [
+          { userId: admin.id, role: ProjectRole.ADMINISTRATOR },
+          { userId: qaLead.id, role: ProjectRole.QA_ENGINEER },
+          { userId: qaB.id, role: ProjectRole.QA_ENGINEER },
+          { userId: devA.id, role: ProjectRole.DEVELOPER },
+          { userId: viewer.id, role: ProjectRole.VIEWER },
+        ],
+      },
+      priorityRules: { create: { weights: { businessCriticality: 8, moduleChange: 15, untested: 12 } } },
+    },
+  });
+
+  await prisma.testCase.create({
+    data: {
+      projectId: ecom.id,
+      externalId: "ECOM-001",
+      title: "Guest checkout completes with valid card",
+      priority: PriorityLevel.P0,
+      businessCriticality: 5,
+      steps: [{ step: 1, action: "Checkout as guest", expected: "Order confirmation" }],
+      expectedResults: "Order placed",
+    },
+  });
+
+  await prisma.testCase.create({
+    data: {
+      projectId: idp.id,
+      externalId: "IDP-010",
+      title: "Pipeline publishes artifact to registry",
+      priority: PriorityLevel.P1,
+      businessCriticality: 4,
+      steps: [{ step: 1, action: "Run pipeline", expected: "Artifact available" }],
+      expectedResults: "Artifact versioned",
+    },
+  });
+
   console.log("Seed complete.");
   console.log("Demo logins (password: password123):");
-  console.log("  admin@agentqa.demo, lead@agentqa.demo, qa.b@agentqa.demo, qa.c@agentqa.demo, qa.d@agentqa.demo, dev.a@agentqa.demo");
+  console.log(
+    "  admin@agentqa.demo, lead@agentqa.demo, qa.b@agentqa.demo (QA on PAY, Lead on ECOM), qa.c@agentqa.demo, qa.d@agentqa.demo, dev.a@agentqa.demo, viewer@agentqa.demo",
+  );
+  console.log(`Projects: PAY (${project.key}), ${ecom.key}, ${idp.key}`);
   console.log(`Design decision seeded: ${decision.externalId}`);
 }
 

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/auth";
 import { useRealtime } from "../hooks/useRealtime";
@@ -6,9 +6,12 @@ import { NotificationBell } from "./NotificationBell";
 import { CommandPalette, CommandTrigger, PresenceStack } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
 import { NavIcon } from "./NavIcon";
+import { ProjectSwitcher } from "./ProjectSwitcher";
 import clsx from "clsx";
 import { api } from "../lib/api";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useProjectRole } from "../hooks/useProjectRole";
+import { canAccessAdmin, navSlugsForRole } from "../lib/roles";
 
 const linkMeta: Record<string, string> = {
   dashboard: "Overview",
@@ -32,27 +35,52 @@ const navSections: { title: string; slugs: string[] }[] = [
 ];
 
 export function AppLayout() {
+  const { projectId: routeProjectId = "" } = useParams();
   const { user, selectedProjectId, setUser, setSelectedProjectId } = useAuthStore();
   const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  useRealtime(selectedProjectId);
+  const activeProjectId = selectedProjectId || routeProjectId;
+  useRealtime(activeProjectId);
+  const { role } = useProjectRole(activeProjectId);
+
+  useEffect(() => {
+    if (routeProjectId && routeProjectId !== selectedProjectId) {
+      setSelectedProjectId(routeProjectId);
+    }
+  }, [routeProjectId, selectedProjectId, setSelectedProjectId]);
 
   const { data: projectsData } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => api<{ projects: Array<{ id: string; name: string; key: string }> }>("/api/projects"),
+    queryFn: () =>
+      api<{
+        projects: Array<{ id: string; name: string; key: string; myRole?: string | null }>;
+      }>("/api/projects"),
   });
 
+  const visibleSlugs = useMemo(() => {
+    const slugs = navSlugsForRole(role ?? undefined);
+    return navSections
+      .map((section) => ({
+        ...section,
+        slugs: section.slugs.filter((slug) => {
+          if (slug === "admin" && !canAccessAdmin(role ?? undefined)) return false;
+          return slugs.includes(slug);
+        }),
+      }))
+      .filter((section) => section.slugs.length > 0);
+  }, [role]);
+
   const { data: dash } = useQuery({
-    queryKey: ["dashboard", selectedProjectId],
-    queryFn: () => api<any>(`/api/projects/${selectedProjectId}/dashboard`),
-    enabled: Boolean(selectedProjectId),
+    queryKey: ["dashboard", activeProjectId],
+    queryFn: () => api<any>(`/api/projects/${activeProjectId}/dashboard`),
+    enabled: Boolean(activeProjectId),
   });
 
   const { data: agentsData } = useQuery({
-    queryKey: ["agents", selectedProjectId],
-    queryFn: () => api<{ agents: Array<{ displayName: string; agentType: string }>; rooms: unknown[] }>(`/api/projects/${selectedProjectId}/agents`),
-    enabled: Boolean(selectedProjectId),
+    queryKey: ["agents", activeProjectId],
+    queryFn: () => api<{ agents: Array<{ displayName: string; agentType: string }>; rooms: unknown[] }>(`/api/projects/${activeProjectId}/agents`),
+    enabled: Boolean(activeProjectId),
   });
 
   const { data: notifData } = useQuery({
@@ -61,12 +89,12 @@ export function AppLayout() {
   });
 
   const unread = (notifData?.notifications ?? []).filter((n) => !n.read).length;
-  const project = projectsData?.projects.find((p) => p.id === selectedProjectId);
+  const project = projectsData?.projects.find((p) => p.id === activeProjectId);
   const releaseLabel = dash?.activeCycle?.release?.version ?? "—";
 
   return (
     <div className="app-canvas min-h-screen">
-      <CommandPalette projectId={selectedProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <CommandPalette projectId={activeProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
       <header className="shell-header">
         <div className="relative mx-auto flex h-12 max-w-[1600px] items-center gap-3 px-4 lg:px-6">
           <button type="button" className="btn-ghost shrink-0 px-2 lg:hidden" onClick={() => setSidebarOpen((v) => !v)}>
@@ -77,6 +105,13 @@ export function AppLayout() {
             <div className="logo-mark h-7 w-7 shrink-0">AQ</div>
             <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
+            </div>
+            <div className="hidden min-w-0 sm:block">
+              <ProjectSwitcher
+                projects={projectsData?.projects ?? []}
+                selectedProjectId={activeProjectId}
+                onSelect={setSelectedProjectId}
+              />
             </div>
           </div>
 
@@ -94,7 +129,7 @@ export function AppLayout() {
             <button
               type="button"
               className="btn-primary hidden sm:inline-flex"
-              onClick={() => selectedProjectId && navigate(`/projects/${selectedProjectId}/execution`)}
+              onClick={() => activeProjectId && navigate(`/projects/${activeProjectId}/execution`)}
             >
               Run tests
             </button>
@@ -111,15 +146,15 @@ export function AppLayout() {
           )}
           style={{ borderColor: "var(--divider)" }}
         >
-          {selectedProjectId
-            ? navSections.map((section) => (
+          {activeProjectId
+            ? visibleSlugs.map((section) => (
                 <div key={section.title} className="nav-section">
                   <p className="nav-section-label">{section.title}</p>
                   <nav className="space-y-0.5">
                     {section.slugs.map((slug) => (
                       <NavLink
                         key={slug}
-                        to={`/projects/${selectedProjectId}/${slug}`}
+                        to={`/projects/${activeProjectId}/${slug}`}
                         className={({ isActive }) => clsx("nav-item", isActive && "nav-item-active")}
                       >
                         <span className="flex items-center gap-2">

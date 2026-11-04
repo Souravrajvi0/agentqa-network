@@ -114,6 +114,60 @@ export async function releaseAssignment(params: {
   return updated;
 }
 
+export async function assignAssignmentByLead(params: {
+  assignmentId: string;
+  assigneeUserId: string;
+  leadUserId: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const assignment = await tx.testAssignment.findUnique({
+      where: { id: params.assignmentId },
+      include: {
+        testCycleCase: { include: { testCycle: true, testCase: true } },
+      },
+    });
+    if (!assignment) throw new NotFoundError("Assignment not found");
+
+    const projectId = assignment.testCycleCase.testCycle.projectId;
+    const leadMember = await tx.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: params.leadUserId } },
+    });
+    if (!leadMember || !["QA_LEAD", "ADMINISTRATOR"].includes(leadMember.role)) {
+      throw new ForbiddenError("Only QA leads can assign tests");
+    }
+
+    const assigneeMember = await tx.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: params.assigneeUserId } },
+    });
+    if (!assigneeMember || !["QA_ENGINEER", "QA_LEAD", "ADMINISTRATOR"].includes(assigneeMember.role)) {
+      throw new ForbiddenError("Assignee must be a QA-capable project member");
+    }
+
+    if (assignment.status === "COMPLETED") {
+      throw new ConflictError("Cannot reassign a completed test");
+    }
+
+    const updated = await tx.testAssignment.update({
+      where: { id: params.assignmentId, lockVersion: assignment.lockVersion },
+      data: {
+        assigneeUserId: params.assigneeUserId,
+        assigneeAgentId: null,
+        status: "CLAIMED",
+        claimedAt: new Date(),
+        lockVersion: { increment: 1 },
+        claimToken: cryptoRandom(),
+      },
+      include: {
+        testCycleCase: { include: { testCase: true } },
+        assigneeUser: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    publishProjectEvent(projectId, "assignment.assigned", { assignment: updated });
+    return updated;
+  });
+}
+
 function cryptoRandom(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }

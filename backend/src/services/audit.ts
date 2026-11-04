@@ -13,6 +13,8 @@ export async function recordAudit(params: {
   return prisma.auditEvent.create({
     data: {
       userId: params.userId,
+      agentId: params.agentId,
+      projectId: params.projectId,
       action: params.action,
       entityType: params.entityType,
       entityId: params.entityId,

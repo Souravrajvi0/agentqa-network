@@ -1,22 +1,80 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { PageHeader, StatusBadge } from "../components/ui";
+import { ErrorText, PageHeader, StatusBadge } from "../components/ui";
+import { useProjectRole } from "../hooks/useProjectRole";
+import { canEditTestCases } from "../lib/roles";
 
 export function TestCasesPage() {
   const { projectId = "" } = useParams();
+  const { role } = useProjectRole(projectId);
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    externalId: "",
+    title: "",
+    priority: "P2",
+    description: "",
+  });
   const query = useMemo(() => (q ? `?q=${encodeURIComponent(q)}` : ""), [q]);
   const { data } = useQuery({
     queryKey: ["test-cases", projectId, q],
     queryFn: () => api<{ testCases: any[] }>(`/api/projects/${projectId}/test-cases${query}`),
   });
 
+  const createCase = useMutation({
+    mutationFn: () =>
+      api(`/api/projects/${projectId}/test-cases`, {
+        method: "POST",
+        body: JSON.stringify({
+          externalId: form.externalId,
+          title: form.title,
+          description: form.description || undefined,
+          priority: form.priority,
+          steps: [{ step: 1, action: "Execute scenario", expected: "Matches expected results" }],
+        }),
+      }),
+    onSuccess: () => {
+      setError(null);
+      setShowForm(false);
+      setForm({ externalId: "", title: "", priority: "P2", description: "" });
+      qc.invalidateQueries({ queryKey: ["test-cases", projectId] });
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <div>
-      <PageHeader title="Test Case Explorer" subtitle="Search, filter, and inspect linked design context" />
-      <input className="input mb-4 max-w-md" placeholder="Search by id or title" value={q} onChange={(e) => setQ(e.target.value)} />
+      <PageHeader title="Test Case Explorer" subtitle="Search, create, and inspect linked design context" />
+      <ErrorText message={error} />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <input className="input max-w-md flex-1" placeholder="Search by id or title" value={q} onChange={(e) => setQ(e.target.value)} />
+        {canEditTestCases(role) ? (
+          <button type="button" className="btn-secondary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Cancel" : "New test case"}
+          </button>
+        ) : null}
+      </div>
+      {showForm ? (
+        <section className="card mb-4 grid gap-2 sm:grid-cols-2">
+          <input className="input" placeholder="External ID" value={form.externalId} onChange={(e) => setForm({ ...form, externalId: e.target.value })} />
+          <select className="input" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+            {["P0", "P1", "P2", "P3"].map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <input className="input sm:col-span-2" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className="input sm:col-span-2" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <button className="btn-primary sm:col-span-2 sm:w-fit" disabled={!form.externalId || !form.title} onClick={() => createCase.mutate()}>
+            Save test case
+          </button>
+        </section>
+      ) : null}
       <div className="table-shell">
         <table className="min-w-full text-sm">
           <thead>

@@ -5,6 +5,11 @@ export type User = {
   email: string;
   name: string;
   globalRole: string;
+  projectMembers?: Array<{
+    projectId: string;
+    role: string;
+    project?: { id: string; name: string; key: string };
+  }>;
 };
 
 export function getToken(): string | null {

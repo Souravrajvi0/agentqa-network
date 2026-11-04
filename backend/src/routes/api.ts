@@ -6,7 +6,12 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireProjectRole, requireUser, resolveAuth } from "../lib/auth.js";
 import { ForbiddenError, NotFoundError } from "../lib/errors.js";
 import { refreshCyclePriorities, getPrioritizedQueue } from "../services/prioritization.js";
-import { claimAssignment, releaseAssignment } from "../services/assignments.js";
+import {
+  assignAssignmentByLead,
+  claimAssignment,
+  releaseAssignment,
+} from "../services/assignments.js";
+import { getProjectHealthSummary } from "../services/projectStats.js";
 import { runAutomatedTest } from "../services/playwrightRunner.js";
 import { notifyProjectLeads, createNotification } from "../services/notifications.js";
 import { notifySwitchCollaboration } from "../services/switch.js";
@@ -37,18 +42,230 @@ async function authProject(req: Parameters<typeof requireUser>[0], projectId: st
   return auth;
 }
 
+const projectRoleSchema = z.enum([
+  "ADMINISTRATOR",
+  "QA_LEAD",
+  "QA_ENGINEER",
+  "DEVELOPER",
+  "VIEWER",
+]);
+
 apiRouter.get(
   "/projects",
   asyncHandler(async (req, res) => {
     const auth = await requireUser(req);
-    const projects = await prisma.project.findMany({
+    const rows = await prisma.project.findMany({
       where: { members: { some: { userId: auth.userId } } },
+      include: {
+        members: { where: { userId: auth.userId }, select: { role: true } },
+        releases: { orderBy: { createdAt: "desc" }, take: 1 },
+        testCycles: { where: { status: "ACTIVE" }, take: 1 },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    const projects = await Promise.all(
+      rows.map(async (p) => ({
+        id: p.id,
+        key: p.key,
+        name: p.name,
+        description: p.description,
+        myRole: p.members[0]?.role ?? null,
+        activeRelease: p.releases[0] ?? null,
+        activeCycle: p.testCycles[0] ?? null,
+        health: await getProjectHealthSummary(p.id),
+      })),
+    );
+    res.json({ projects });
+  }),
+);
+
+apiRouter.post(
+  "/projects",
+  asyncHandler(async (req, res) => {
+    const auth = await requireUser(req);
+    const body = z
+      .object({
+        key: z
+          .string()
+          .min(2)
+          .max(12)
+          .regex(/^[A-Z0-9_-]+$/),
+        name: z.string().min(1).max(120),
+        description: z.string().max(2000).optional(),
+      })
+      .parse(req.body);
+
+    const existing = await prisma.project.findUnique({ where: { key: body.key } });
+    if (existing) return res.status(409).json({ error: "Project key already exists" });
+
+    const project = await prisma.$transaction(async (tx) => {
+      const created = await tx.project.create({
+        data: {
+          key: body.key,
+          name: body.name,
+          description: body.description,
+          members: {
+            create: { userId: auth.userId, role: "ADMINISTRATOR" },
+          },
+          priorityRules: { create: { weights: { businessCriticality: 10, moduleChange: 20, untested: 15 } } },
+        },
+      });
+      await recordAudit({
+        projectId: created.id,
+        userId: auth.userId,
+        action: "project.created",
+        entityType: "Project",
+        entityId: created.id,
+        details: { key: created.key },
+      });
+      return created;
+    });
+
+    publishProjectEvent(project.id, "project.created", { projectId: project.id });
+    res.status(201).json({ project });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await authProject(req, projectId);
+    const member = await prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: auth.userId } },
+    });
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
       include: {
         releases: { orderBy: { createdAt: "desc" }, take: 3 },
         testCycles: { where: { status: "ACTIVE" }, take: 1 },
       },
     });
-    res.json({ projects });
+    if (!project) throw new NotFoundError("Project not found");
+    const health = await getProjectHealthSummary(projectId);
+    res.json({ project, myRole: member?.role, health });
+  }),
+);
+
+apiRouter.patch(
+  "/projects/:projectId",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR"]);
+    const body = z
+      .object({
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().max(2000).optional(),
+      })
+      .parse(req.body);
+
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: body,
+    });
+    await recordAudit({
+      projectId,
+      userId: auth.userId,
+      action: "project.updated",
+      entityType: "Project",
+      entityId: projectId,
+    });
+    res.json({ project });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId/members",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    await authProject(req, projectId);
+    const members = await prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: { select: { id: true, email: true, name: true } } },
+      orderBy: { joinedAt: "asc" },
+    });
+    res.json({ members });
+  }),
+);
+
+apiRouter.post(
+  "/projects/:projectId/members",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD"]);
+
+    const body = z
+      .object({
+        email: z.string().email(),
+        role: projectRoleSchema,
+      })
+      .parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    if (!user) return res.status(404).json({ error: "User not found — they must register first" });
+
+    const member = await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId: user.id } },
+      create: { projectId, userId: user.id, role: body.role },
+      update: { role: body.role },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+
+    await recordAudit({
+      projectId,
+      userId: auth.userId,
+      action: "project.member.added",
+      entityType: "ProjectMember",
+      entityId: member.id,
+      details: { email: user.email, role: body.role },
+    });
+
+    res.status(201).json({ member });
+  }),
+);
+
+apiRouter.patch(
+  "/projects/:projectId/members/:memberId",
+  asyncHandler(async (req, res) => {
+    const { projectId, memberId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD"]);
+    const body = z.object({ role: projectRoleSchema }).parse(req.body);
+
+    const existing = await prisma.projectMember.findFirst({
+      where: { id: memberId, projectId },
+    });
+    if (!existing) throw new NotFoundError("Member not found");
+
+    const member = await prisma.projectMember.update({
+      where: { id: memberId },
+      data: { role: body.role },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+    res.json({ member });
+  }),
+);
+
+apiRouter.delete(
+  "/projects/:projectId/members/:memberId",
+  asyncHandler(async (req, res) => {
+    const { projectId, memberId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR"]);
+
+    const existing = await prisma.projectMember.findFirst({
+      where: { id: memberId, projectId },
+    });
+    if (!existing) throw new NotFoundError("Member not found");
+    if (existing.userId === auth.userId) {
+      return res.status(400).json({ error: "Cannot remove yourself from the project" });
+    }
+
+    await prisma.projectMember.delete({ where: { id: memberId } });
+    res.status(204).send();
   }),
 );
 
@@ -161,6 +378,95 @@ apiRouter.get(
       },
     });
     if (!testCase) throw new NotFoundError("Test case not found");
+    res.json({ testCase });
+  }),
+);
+
+const testCaseBodySchema = z.object({
+  externalId: z.string().min(1).max(40),
+  title: z.string().min(1).max(500),
+  description: z.string().max(5000).optional(),
+  preconditions: z.string().max(5000).optional(),
+  expectedResults: z.string().max(5000).optional(),
+  steps: z.array(z.record(z.unknown())).default([]),
+  priority: z.enum(["P0", "P1", "P2", "P3"]).default("P2"),
+  businessCriticality: z.number().int().min(1).max(5).default(3),
+  moduleId: z.string().optional(),
+  featureId: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  automationAvailable: z.boolean().default(false),
+  automationCommand: z.string().optional(),
+});
+
+apiRouter.post(
+  "/projects/:projectId/test-cases",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD", "QA_ENGINEER"]);
+
+    const body = testCaseBodySchema.parse(req.body);
+    const dup = await prisma.testCase.findFirst({
+      where: { projectId, externalId: body.externalId },
+    });
+    if (dup) return res.status(409).json({ error: "External id already exists in project" });
+
+    const testCase = await prisma.testCase.create({
+      data: { ...body, projectId, steps: body.steps as Prisma.InputJsonValue },
+    });
+
+    await recordAudit({
+      projectId,
+      userId: auth.userId,
+      action: "test_case.created",
+      entityType: "TestCase",
+      entityId: testCase.id,
+      details: { externalId: testCase.externalId },
+    });
+
+    publishProjectEvent(projectId, "test_case.created", { testCaseId: testCase.id });
+    res.status(201).json({ testCase });
+  }),
+);
+
+apiRouter.patch(
+  "/projects/:projectId/test-cases/:testCaseId",
+  asyncHandler(async (req, res) => {
+    const { projectId, testCaseId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD", "QA_ENGINEER"]);
+
+    const existing = await prisma.testCase.findFirst({ where: { id: testCaseId, projectId } });
+    if (!existing) throw new NotFoundError("Test case not found");
+
+    const body = testCaseBodySchema.partial().extend({ archived: z.boolean().optional() }).parse(req.body);
+
+    const testCase = await prisma.$transaction(async (tx) => {
+      await tx.testCaseVersion.create({
+        data: {
+          testCaseId: existing.id,
+          version: existing.currentVersion,
+          snapshot: {
+            title: existing.title,
+            steps: existing.steps,
+            expectedResults: existing.expectedResults,
+            priority: existing.priority,
+          } as Prisma.InputJsonValue,
+          changedByUserId: auth.userId,
+          changeNote: "Auto snapshot before update",
+        },
+      });
+
+      return tx.testCase.update({
+        where: { id: testCaseId },
+        data: {
+          ...body,
+          steps: body.steps ? (body.steps as Prisma.InputJsonValue) : undefined,
+          currentVersion: { increment: 1 },
+        },
+      });
+    });
+
     res.json({ testCase });
   }),
 );
@@ -374,6 +680,20 @@ apiRouter.post(
       userId: auth.agentId ? undefined : auth.userId,
       agentId: auth.agentId,
       reason: body.reason,
+    });
+    res.json({ assignment });
+  }),
+);
+
+apiRouter.post(
+  "/assignments/:assignmentId/assign",
+  asyncHandler(async (req, res) => {
+    const auth = await requireUser(req);
+    const body = z.object({ assigneeUserId: z.string().min(1) }).parse(req.body ?? {});
+    const assignment = await assignAssignmentByLead({
+      assignmentId: req.params.assignmentId,
+      assigneeUserId: body.assigneeUserId,
+      leadUserId: auth.userId,
     });
     res.json({ assignment });
   }),
@@ -759,7 +1079,7 @@ apiRouter.get(
 
     const activeCycle = await prisma.testCycle.findFirst({
       where: { projectId, status: "ACTIVE" },
-      include: { release: true },
+      include: { release: { include: { builds: true } } },
     });
 
     if (!activeCycle) {
@@ -770,30 +1090,58 @@ apiRouter.get(
       });
     }
 
+    const currentBuild = activeCycle.release.builds.find((b) => b.isCurrent) ?? null;
+
     const cases = await prisma.testCycleCase.findMany({
       where: { testCycleId: activeCycle.id, plannedPriority: { in: ["P0", "P1"] } },
-      include: { assignment: true, testCase: true },
+      include: {
+        assignment: true,
+        testCase: true,
+        executions: currentBuild
+          ? {
+              where: { buildId: currentBuild.id },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            }
+          : { orderBy: { createdAt: "desc" }, take: 1 },
+      },
     });
 
     const incompleteCritical = cases.filter((c) => c.assignment?.status !== "COMPLETED");
+    const staleOrMissing = cases.filter((c) => {
+      if (!currentBuild) return true;
+      const latest = c.executions[0];
+      if (!latest) return true;
+      if (latest.status === "FAILED" || latest.status === "BLOCKED") return true;
+      if (latest.buildId !== currentBuild.id) return true;
+      return false;
+    });
+
     const openDefects = await prisma.defect.count({
       where: { projectId, status: { notIn: ["CLOSED", "REJECTED"] }, priority: { in: ["P0", "P1"] } },
     });
 
     const blockers: string[] = [];
     if (incompleteCritical.length) {
-      blockers.push(`${incompleteCritical.length} critical/high tests not completed`);
+      blockers.push(`${incompleteCritical.length} critical/high assignments not completed`);
+    }
+    if (currentBuild && staleOrMissing.length) {
+      blockers.push(
+        `${staleOrMissing.length} critical tests lack passing execution on build ${currentBuild.label}`,
+      );
     }
     if (openDefects) blockers.push(`${openDefects} open P0/P1 defects`);
 
     res.json({
       ready: blockers.length === 0,
       release: activeCycle.release,
+      currentBuild,
       incompleteCritical: incompleteCritical.map((c) => c.testCase.externalId),
+      staleOnCurrentBuild: staleOrMissing.map((c) => c.testCase.externalId),
       openDefects,
       blockers,
       disclaimer:
-        "Automated readiness suggestions require human QA lead approval before release.",
+        "Readiness considers current build executions, open defects, and assignment completion — human QA lead approval still required.",
     });
   }),
 );

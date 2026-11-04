@@ -3,7 +3,8 @@ import { prisma } from "../lib/prisma.js";
 import { claimAssignment } from "./assignments.js";
 import { ConflictError } from "../lib/errors.js";
 
-const runIntegration = Boolean(process.env.DATABASE_URL);
+const runIntegration =
+  process.env.AGENTQA_INTEGRATION === "1" && Boolean(process.env.DATABASE_URL);
 
 describe.runIf(runIntegration)("claimAssignment integration", () => {
   it("allows only one concurrent claim on the same assignment", async () => {

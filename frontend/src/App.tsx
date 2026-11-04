@@ -14,6 +14,7 @@ import {
   ReleaseReadinessPage,
 } from "./pages/DomainPages";
 import { AdminPage } from "./pages/AdminPage";
+import { ProjectHomeRedirect } from "./components/ProjectHomeRedirect";
 import { useAuthStore } from "./stores/auth";
 import { useEffect } from "react";
 import { api, getToken } from "./lib/api";
@@ -54,7 +55,7 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route index element={<ProjectHomeRedirect />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="test-cases" element={<TestCasesPage />} />
         <Route path="test-cases/:testCaseId" element={<TestCaseDetailPage />} />
