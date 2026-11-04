@@ -8,6 +8,8 @@ import { useProjectRole } from "../hooks/useProjectRole";
 
 const NAV = [
   ["dashboard", "Overview Dashboard"],
+  ["delivery", "Delivery Pipeline"],
+  ["qa-inbox", "QA Inbox"],
   ["test-cases", "Test Case Explorer"],
   ["my-workspace", "My Testing Workspace"],
   ["team-board", "Team Testing Board"],

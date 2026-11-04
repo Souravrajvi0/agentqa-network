@@ -1,5 +1,7 @@
 const paths: Record<string, string> = {
   dashboard: "M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z",
+  delivery: "M4 6h6v12H4V6Zm10 0h6v8h-6V6Zm0 10h6v2h-6v-2Z",
+  "qa-inbox": "M4 7h16v12H4V7Zm0 0 8 6 8-6",
   "test-cases": "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
   "my-workspace": "M4 7h16v12H4V7Zm0 0 8 6 8-6",
   "team-board": "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM4 19a4 4 0 0 1 8 0M12 19a4 4 0 0 1 8 0",

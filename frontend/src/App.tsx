@@ -14,6 +14,7 @@ import {
   ExecutionPage,
   ReleaseReadinessPage,
 } from "./pages/DomainPages";
+import { DeliveryDetailPage, DeliveryPipelinePage, QaInboxPage } from "./pages/DeliveryPages";
 import { AdminPage } from "./pages/AdminPage";
 import { ProjectHomeRedirect } from "./components/ProjectHomeRedirect";
 import { RequireProjectRole } from "./components/RequireProjectRole";
@@ -70,6 +71,9 @@ export default function App() {
         <Route path="team-board" element={<Guard slug="team-board"><TeamBoardPage /></Guard>} />
         <Route path="design-decisions" element={<Guard slug="design-decisions"><DesignDecisionsPage /></Guard>} />
         <Route path="developer-changes" element={<Guard slug="developer-changes"><DeveloperChangesPage /></Guard>} />
+        <Route path="delivery" element={<Guard slug="delivery"><DeliveryPipelinePage /></Guard>} />
+        <Route path="delivery/:changeId" element={<Guard slug="delivery"><DeliveryDetailPage /></Guard>} />
+        <Route path="qa-inbox" element={<Guard slug="qa-inbox"><QaInboxPage /></Guard>} />
         <Route path="execution" element={<Guard slug="execution"><ExecutionPage /></Guard>} />
         <Route path="defects" element={<Guard slug="defects"><DefectsPage /></Guard>} />
         <Route path="agents" element={<Guard slug="agents"><AgentsPage /></Guard>} />
