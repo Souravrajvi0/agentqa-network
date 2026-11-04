@@ -476,14 +476,23 @@ export function ReleaseReadinessPage() {
             <li key={b}>{b}</li>
           ))}
         </ul>
-        {(data?.incompleteCritical ?? []).length ? (
+        {(data?.warnings ?? []).length ? (
+          <ul className="mt-3 list-disc pl-5 text-sm text-warning">
+            {(data.warnings as string[]).map((w: string) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        ) : null}
+        {((data?.qaGate?.incompleteCritical ?? data?.incompleteCritical) ?? []).length ? (
           <p className="mt-3 text-sm text-warning">
-            Critical assignments incomplete: {(data.incompleteCritical as string[]).join(", ")}
+            Critical assignments incomplete:{" "}
+            {((data.qaGate?.incompleteCritical ?? data.incompleteCritical) as string[]).join(", ")}
           </p>
         ) : null}
-        {(data?.staleOnCurrentBuild ?? []).length ? (
+        {((data?.qaGate?.staleOnCurrentBuild ?? data?.staleOnCurrentBuild) ?? []).length ? (
           <p className="mt-3 text-sm text-warning">
-            Stale on current build: {(data.staleOnCurrentBuild as string[]).join(", ")}
+            Stale on current build:{" "}
+            {((data.qaGate?.staleOnCurrentBuild ?? data.staleOnCurrentBuild) as string[]).join(", ")}
           </p>
         ) : null}
         {data?.currentBuild ? (
