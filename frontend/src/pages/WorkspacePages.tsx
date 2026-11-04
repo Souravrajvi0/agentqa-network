@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { ErrorText, PageHeader, StatusBadge } from "../components/ui";
+import { ErrorText, EmptyState, MonoId, PageHeader, SectionTitle, StatusBadge } from "../components/ui";
 import { invalidateProjectQueries } from "../hooks/useTestingContext";
 
 export function MyWorkspacePage() {
@@ -52,24 +52,29 @@ export function MyWorkspacePage() {
     <div>
       <PageHeader title="My Testing Workspace" subtitle="Claim work, record manual results, and track assignments" />
       <ErrorText message={error} />
-      {isLoading ? <p className="text-label">Loading workspace…</p> : null}
-      {!buildId ? <p className="mb-4 text-sm text-warning">No current build — seed/migration may be incomplete.</p> : null}
+      {!buildId && !isLoading ? (
+        <p className="mb-4 text-sm text-warning">No current build — seed or migration may be incomplete.</p>
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {isLoading ? <p className="text-label">Loading workspace…</p> : null}
+
+      <div className="grid gap-5 lg:grid-cols-2">
         <section className="card">
-          <h2 className="mb-3 font-medium">My assignments</h2>
-          <ul className="space-y-3 text-sm">
+          <SectionTitle>My assignments</SectionTitle>
+          <ul className="space-y-3">
             {(data?.assignments ?? []).map((a: any) => (
               <li key={a.id} className="list-row">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{a.testCycleCase.testCase.externalId}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <MonoId>{a.testCycleCase.testCase.externalId}</MonoId>
+                    <p className="mt-1.5 text-[13px] font-medium leading-snug text-heading">{a.testCycleCase.testCase.title}</p>
+                  </div>
                   <StatusBadge value={a.status} />
                 </div>
-                <p className="text-label">{a.testCycleCase.testCase.title}</p>
                 {buildId ? (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: "var(--divider)" }}>
                     <textarea
-                      className="input min-h-[60px]"
+                      className="input min-h-[64px] py-2"
                       placeholder="Actual results / notes"
                       value={notes[a.id] ?? ""}
                       onChange={(e) => setNotes((prev) => ({ ...prev, [a.id]: e.target.value }))}
@@ -78,7 +83,7 @@ export function MyWorkspacePage() {
                       {(["PASSED", "FAILED", "BLOCKED"] as const).map((status) => (
                         <button
                           key={status}
-                          className="btn-ghost"
+                          className="btn-ghost h-7 px-2.5 text-[12px]"
                           disabled={recordManual.isPending}
                           onClick={() =>
                             recordManual.mutate({
@@ -89,10 +94,10 @@ export function MyWorkspacePage() {
                             })
                           }
                         >
-                          Mark {status}
+                          {status === "PASSED" ? "Pass" : status === "FAILED" ? "Fail" : "Block"}
                         </button>
                       ))}
-                      <button className="btn-ghost" onClick={() => release.mutate(a.id)}>
+                      <button className="btn-ghost h-7 px-2.5 text-[12px] text-muted" onClick={() => release.mutate(a.id)}>
                         Release
                       </button>
                     </div>
@@ -100,34 +105,34 @@ export function MyWorkspacePage() {
                 ) : null}
               </li>
             ))}
-            {!data?.assignments?.length && !isLoading ? (
-              <p className="text-muted">No active assignments — claim a recommended test.</p>
-            ) : null}
           </ul>
+          {!data?.assignments?.length && !isLoading ? (
+            <EmptyState title="No active assignments" description="Claim a recommended test from the queue." />
+          ) : null}
         </section>
 
         <section className="card">
-          <h2 className="mb-3 font-medium">Recommended next tests</h2>
-          <ul className="space-y-2 text-sm">
+          <SectionTitle>Recommended next</SectionTitle>
+          <ul className="space-y-3">
             {(data?.recommended ?? []).map((item: any) => (
               <li key={item.cycleCaseId} className="list-row">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{item.testCase.externalId}</p>
-                    <p className="text-label">{item.testCase.title}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <MonoId>{item.testCase.externalId}</MonoId>
+                    <p className="mt-1.5 text-[13px] font-medium leading-snug text-heading">{item.testCase.title}</p>
                   </div>
                   <StatusBadge value={item.recommendation?.recommended ?? item.testCase.priority} />
                 </div>
                 {item.assignment?.status === "AVAILABLE" ? (
                   <button
-                    className="btn-primary mt-2"
+                    className="btn-primary mt-3"
                     disabled={claim.isPending}
                     onClick={() => claim.mutate(item.assignment.id)}
                   >
                     Claim
                   </button>
                 ) : (
-                  <p className="mt-2 text-xs text-muted">
+                  <p className="mt-3 text-[12px] text-muted">
                     Owned by{" "}
                     {item.assignment?.assigneeUser?.name ??
                       item.assignment?.assigneeAgent?.displayName ??
@@ -137,6 +142,9 @@ export function MyWorkspacePage() {
               </li>
             ))}
           </ul>
+          {!data?.recommended?.length && !isLoading ? (
+            <EmptyState title="Queue is clear" description="No recommended tests for this cycle." />
+          ) : null}
         </section>
       </div>
     </div>

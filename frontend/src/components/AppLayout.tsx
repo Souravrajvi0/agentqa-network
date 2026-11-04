@@ -5,6 +5,7 @@ import { useRealtime } from "../hooks/useRealtime";
 import { NotificationBell } from "./NotificationBell";
 import { CommandPalette, CommandTrigger, PresenceStack } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
+import { NavIcon } from "./NavIcon";
 import clsx from "clsx";
 import { api } from "../lib/api";
 import { useState } from "react";
@@ -121,7 +122,10 @@ export function AppLayout() {
                         to={`/projects/${selectedProjectId}/${slug}`}
                         className={({ isActive }) => clsx("nav-item", isActive && "nav-item-active")}
                       >
-                        <span>{linkMeta[slug]}</span>
+                        <span className="flex items-center gap-2">
+                          <NavIcon name={slug} />
+                          {linkMeta[slug]}
+                        </span>
                         {slug === "developer-changes" && unread > 0 ? (
                           <span className="chip border-amber-500/40 text-amber-900 dark:border-amber-500/25 dark:text-amber-100/90">{unread}</span>
                         ) : null}
