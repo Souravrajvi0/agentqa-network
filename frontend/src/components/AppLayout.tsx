@@ -62,7 +62,6 @@ export function AppLayout() {
   const unread = (notifData?.notifications ?? []).filter((n) => !n.read).length;
   const project = projectsData?.projects.find((p) => p.id === selectedProjectId);
   const releaseLabel = dash?.activeCycle?.release?.version ?? "—";
-  const switchLinked = (agentsData?.rooms?.length ?? 0) > 0;
 
   return (
     <div className="app-canvas min-h-screen">
@@ -77,7 +76,6 @@ export function AppLayout() {
             <div className="logo-mark h-7 w-7 shrink-0">AQ</div>
             <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-muted">Switch orchestration</p>
             </div>
           </div>
 
@@ -88,16 +86,7 @@ export function AppLayout() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <div className="hidden items-center gap-2 xl:flex">
-              <span
-                className={clsx(
-                  "chip gap-1.5 normal-case tracking-normal",
-                  switchLinked ? "border-emerald-500/25 text-emerald-700 dark:text-emerald-200/90" : "text-muted",
-                )}
-              >
-                <span className={clsx("h-1 w-1 rounded-sm", switchLinked ? "bg-emerald-500" : "bg-zinc-400")} />
-                Switch {switchLinked ? "linked" : "offline"}
-              </span>
+            <div className="hidden xl:block">
               <PresenceStack agents={agentsData?.agents ?? []} />
             </div>
             <ThemeToggle />
