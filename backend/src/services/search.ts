@@ -78,17 +78,52 @@ export async function searchProjectEntities(projectId: string, q: string, limit 
 
 export async function getSwitchIntegrationStatus(projectId: string) {
   const rooms = await prisma.switchRoomLink.findMany({ where: { projectId } });
+  const heartbeat = await prisma.switchRunnerHeartbeat.findUnique({ where: { projectId } });
   const { config } = await import("../lib/config.js");
   const bridgeConfigured = Boolean(
     config.switch.bridgeBaseUrl && config.switch.notifyAgentId && config.switch.notifyAgentApiKey,
   );
+  const runnerConnected =
+    heartbeat != null && Date.now() - heartbeat.lastSeenAt.getTime() < 120_000;
+
+  let status: "not_configured" | "incomplete" | "partial" | "active" | "delivery_failing" = "not_configured";
+  if (!bridgeConfigured && rooms.length === 0) {
+    status = "not_configured";
+  } else if (!bridgeConfigured || rooms.length === 0) {
+    status = "incomplete";
+  } else if (rooms.some((r) => r.lastOutboundOk === false)) {
+    status = "delivery_failing";
+  } else if (bridgeConfigured && rooms.some((r) => r.enabled)) {
+    status = runnerConnected ? "active" : "partial";
+  } else {
+    status = "partial";
+  }
+
+  const lastOutbound = rooms
+    .map((r) => r.lastOutboundAt)
+    .filter(Boolean)
+    .sort((a, b) => (b!.getTime() ?? 0) - (a!.getTime() ?? 0))[0];
+
+  const lastError = rooms.find((r) => r.lastOutboundError)?.lastOutboundError;
+
   return {
     projectRooms: rooms,
     bridgeConfigured,
     globalRoomConfigured: Boolean(config.switch.roomId),
-    status: bridgeConfigured && rooms.length > 0 ? "partial" : bridgeConfigured ? "bridge_only" : "not_configured",
+    runnerConnected,
+    runnerLastSeenAt: heartbeat?.lastSeenAt ?? null,
+    runnerLabel: heartbeat?.runnerLabel ?? null,
+    lastOutboundAt: lastOutbound ?? null,
+    lastCommunicationError: lastError ?? null,
+    status,
+    enabled: rooms.some((r) => r.enabled),
     message: bridgeConfigured
-      ? "Bridge credentials present; outbound messages use configured notify agent."
-      : "Set SWITCH_BRIDGE_BASE_URL, SWITCH_NOTIFY_AGENT_ID, and SWITCH_NOTIFY_AGENT_API_KEY for live Switch.",
+      ? "Bridge credentials present; outbound delivery events use configured notify agent when rooms are linked."
+      : "Set SWITCH_BRIDGE_BASE_URL, SWITCH_NOTIFY_AGENT_ID, and SWITCH_NOTIFY_AGENT_API_KEY for live Switch. Link a room below.",
+    setupSteps: [
+      "Configure SWITCH_BRIDGE_BASE_URL, SWITCH_NOTIFY_AGENT_ID, and SWITCH_NOTIFY_AGENT_API_KEY on the AgentQA server.",
+      "Link a Switch room for this project (Admin → Switch integration).",
+      "Optionally run @agentqa/switch-agent-runner and POST heartbeats to /api/projects/:id/switch/runner/heartbeat with SWITCH_RUNNER_TOKEN.",
+    ],
   };
 }

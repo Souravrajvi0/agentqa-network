@@ -188,6 +188,7 @@ model Project {
   knowledgeEntries     KnowledgeEntry[]
   agentRegistrations   AgentRegistration[]
   switchRoomLinks      SwitchRoomLink[]
+  switchRunnerHeartbeat SwitchRunnerHeartbeat?
   priorityRules        PriorityRuleConfig?
   environments         Environment[]
   githubIntegration    GitHubProjectIntegration?
@@ -687,11 +688,23 @@ model SwitchRoomLink {
   roomId      String
   roomName    String
   bridgeBaseUrl String
+  enabled     Boolean  @default(true)
+  lastOutboundAt DateTime?
+  lastOutboundOk Boolean?
+  lastOutboundError String?
   createdAt   DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, roomId])
+}
+
+model SwitchRunnerHeartbeat {
+  projectId   String   @id
+  runnerLabel String?
+  lastSeenAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
@@ -730,6 +743,10 @@ model GitHubProjectIntegration {
   webhookSecret    String
   defaultBranch    String   @default("main")
   enabled          Boolean  @default(true)
+  lastWebhookReceivedAt DateTime?
+  lastWebhookSuccessAt  DateTime?
+  lastWebhookFailureAt  DateTime?
+  lastWebhookFailureMessage String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

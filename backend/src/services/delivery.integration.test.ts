@@ -116,32 +116,111 @@ describe.runIf(runIntegration)("delivery workflow integration", () => {
     expect(res.status).toBe(403);
   });
 
-  it("release readiness reports CI gate with override preserving failure", async () => {
+  it("agent API key cannot override CI gate", async () => {
     const pay = await prisma.project.findUniqueOrThrow({ where: { key: "PAY" } });
-    const lead = await prisma.user.findUniqueOrThrow({ where: { email: "lead@agentqa.demo" } });
+    const dev = await prisma.user.findUniqueOrThrow({ where: { email: "dev.a@agentqa.demo" } });
+    const apiKey = generateAgentApiKey();
+    await prisma.agentRegistration.create({
+      data: {
+        projectId: pay.id,
+        ownerUserId: dev.id,
+        name: `integration-ci-agent-${Date.now()}`,
+        displayName: "CI Agent",
+        agentType: "DEVELOPMENT",
+        apiKeyHash: hashAgentKey(apiKey),
+        apiKeyPrefix: apiKey.slice(0, 10),
+        capabilities: defaultCapabilities("DEVELOPMENT"),
+      },
+    });
     const failRun = await prisma.ciRun.create({
       data: {
         projectId: pay.id,
         provider: "AGENTQA_SIMULATE",
         repository: "demo/local",
-        externalRunId: `sim-fail-${Date.now()}`,
+        externalRunId: `sim-agent-${Date.now()}`,
         workflowName: "ci.yml",
         status: "COMPLETED",
         conclusion: "FAILURE",
-        metadata: { simulated: true },
       },
     });
-    await prisma.ciGateOverride.create({
+    const res = await request(app)
+      .post(`/api/projects/${pay.id}/ci/overrides`)
+      .set("Authorization", `Bearer ${apiKey}`)
+      .send({ ciRunId: failRun.id, reason: "agent attempt" });
+    expect(res.status).toBe(403);
+  });
+
+  it("only one QA engineer can accept a pending handoff", async () => {
+    const pay = await prisma.project.findUniqueOrThrow({ where: { key: "PAY" } });
+    const dev = await prisma.user.findUniqueOrThrow({ where: { email: "dev.a@agentqa.demo" } });
+    const qaA = await prisma.user.findUniqueOrThrow({ where: { email: "qa.b@agentqa.demo" } });
+    const qaB = await prisma.user.findUniqueOrThrow({ where: { email: "lead@agentqa.demo" } });
+    const change = await prisma.developerChangeRequest.create({
       data: {
         projectId: pay.id,
-        ciRunId: failRun.id,
-        actorUserId: lead.id,
-        reason: "Integration test override",
+        authorUserId: dev.id,
+        title: "Handoff concurrency test",
+        description: "Integration",
+        status: "QA_IN_PROGRESS",
       },
     });
-    const unchanged = await prisma.ciRun.findUniqueOrThrow({ where: { id: failRun.id } });
-    expect(unchanged.conclusion).toBe("FAILURE");
-    const storedOverride = await prisma.ciGateOverride.findFirst({ where: { ciRunId: failRun.id } });
-    expect(storedOverride?.reason).toContain("Integration");
+    const scope = await prisma.retestScope.create({
+      data: {
+        projectId: pay.id,
+        developerChangeId: change.id,
+        version: 1,
+        status: "APPROVED",
+        testCaseIds: [],
+        proposedByUserId: dev.id,
+        approvedByUserId: qaB.id,
+        approvedAt: new Date(),
+      },
+    });
+    const handoff = await prisma.qAHandoff.create({
+      data: {
+        projectId: pay.id,
+        developerChangeId: change.id,
+        retestScopeId: scope.id,
+        status: "PENDING",
+        summary: "Concurrency",
+      },
+    });
+    const tokenA = await tokenForEmail("qa.b@agentqa.demo");
+    const tokenB = await tokenForEmail("lead@agentqa.demo");
+    const first = await request(app)
+      .post(`/api/projects/${pay.id}/qa-inbox/${handoff.id}/accept`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({});
+    expect(first.status).toBe(200);
+    const second = await request(app)
+      .post(`/api/projects/${pay.id}/qa-inbox/${handoff.id}/accept`)
+      .set("Authorization", `Bearer ${tokenB}`)
+      .send({});
+    expect(second.status).toBe(409);
+  });
+
+  it("records audit event on CI override", async () => {
+    const pay = await prisma.project.findUniqueOrThrow({ where: { key: "PAY" } });
+    const leadToken = await tokenForEmail("lead@agentqa.demo");
+    const failRun = await prisma.ciRun.create({
+      data: {
+        projectId: pay.id,
+        provider: "AGENTQA_SIMULATE",
+        repository: "demo/local",
+        externalRunId: `sim-audit-${Date.now()}`,
+        workflowName: "ci.yml",
+        status: "COMPLETED",
+        conclusion: "FAILURE",
+      },
+    });
+    const res = await request(app)
+      .post(`/api/projects/${pay.id}/ci/overrides`)
+      .set("Authorization", `Bearer ${leadToken}`)
+      .send({ ciRunId: failRun.id, reason: "Audit trail test override" });
+    expect(res.status).toBe(201);
+    const audit = await prisma.auditEvent.findFirst({
+      where: { projectId: pay.id, action: "ci_gate.override", entityId: res.body.override.id },
+    });
+    expect(audit).toBeTruthy();
   });
 });

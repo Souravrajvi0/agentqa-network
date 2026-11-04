@@ -10,14 +10,14 @@ Audit date: 2026-11-04 (implementation pass on `feat/delivery-pipeline-2ff4`).
 | Builds | ✓ commitSha, branch, repository, sourceProvider | ✓ Created on successful CI (GitHub) | ✓ Shown on pipeline / inbox | — | **Implemented** |
 | Retest scopes | ✓ `RetestScope` versioning | ✓ Propose + QA lead approve | ✓ Detail view (scope summary) | — | **Implemented** (modify/reject flows via API only) |
 | QA handoffs | ✓ `QAHandoff` | ✓ Created on approved scope + CI gate; inbox API | ✓ QA Inbox + accept | — | **Implemented** |
-| Test execution | ✓ retestScopeId, qaHandoffId on executions | ✓ Existing manual/automation paths | ✓ Execution center (cycle-based) | ✓ Assignment integration | **Partial** (handoff-scoped execution UI not dedicated) |
+| Test execution | ✓ retestScopeId, qaHandoffId on executions | ✓ Handoff execution POST + manual paths | ✓ Handoff detail execute UI | ✓ Assignment + handoff integration | **Implemented** |
 | Defect lifecycle | ✓ Existing | ✓ Existing | ✓ Defect workspace | — | **Implemented** |
 | Release readiness | ✓ Uses CI, defects, clarifications, changes | ✓ `evaluateReleaseReadiness` (CI/QA/defect gates) | ✓ Existing page (consumes enriched API) | — | **Implemented** |
 | Agent attribution | ✓ `ActorType`, agent on changes | ✓ Agent tools for changes, scope, handoffs, CI | ✓ Pipeline attribution column | — | **Implemented** |
-| GitHub integration config | ✓ `GitHubProjectIntegration` (secret server-only) | ✓ PUT/GET + webhook | Admin not dedicated (API only) | ✓ Signature tests | **Partial** (no settings UI) |
-| CI gate override | ✓ `CiGateOverride` | ✓ QA lead POST `/ci/overrides` | Not in UI yet | — | **Partial** |
+| GitHub integration config | ✓ Health fields on `GitHubProjectIntegration` | ✓ GET/PUT/rotate + webhook health | ✓ `/admin/github` settings | ✓ Signature + integration | **Implemented** |
+| CI gate override | ✓ `CiGateOverride` | ✓ QA lead POST `/ci/overrides` | ✓ Delivery detail override dialog | ✓ Audit + agent denial tests | **Implemented** |
 | Delivery timeline | ✓ `DeliveryTimelineEvent` | ✓ `recordDeliveryEvent` on key actions | ✓ Detail timeline | — | **Implemented** |
-| Switch coordination | ✓ Room links | ✓ Status + notifications | ✓ Agents page | Manual | **Partial** (external Switch runtime) |
+| Switch coordination | ✓ Rooms + heartbeat + outbound fields | ✓ Status + delivery notifications | ✓ Admin status + setup steps | Partial E2E | **Partial** (requires Switch credentials) |
 
 ## Externally blocked
 

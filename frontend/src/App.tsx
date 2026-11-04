@@ -15,6 +15,8 @@ import {
   ReleaseReadinessPage,
 } from "./pages/DomainPages";
 import { DeliveryDetailPage, DeliveryPipelinePage, QaInboxPage } from "./pages/DeliveryPages";
+import { HandoffDetailPage } from "./pages/HandoffPages";
+import { GitHubIntegrationPage } from "./pages/GitHubIntegrationPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ProjectHomeRedirect } from "./components/ProjectHomeRedirect";
 import { RequireProjectRole } from "./components/RequireProjectRole";
@@ -79,10 +81,12 @@ export default function App() {
         <Route path="delivery" element={<Guard slug="delivery"><DeliveryPipelinePage /></Guard>} />
         <Route path="delivery/:changeId" element={<Guard slug="delivery"><DeliveryDetailPage /></Guard>} />
         <Route path="qa-inbox" element={<Guard slug="qa-inbox"><QaInboxPage /></Guard>} />
+        <Route path="qa-inbox/:handoffId" element={<Guard slug="qa-inbox"><HandoffDetailPage /></Guard>} />
         <Route path="execution" element={<Guard slug="execution"><ExecutionPage /></Guard>} />
         <Route path="defects" element={<Guard slug="defects"><DefectsPage /></Guard>} />
         <Route path="agents" element={<Guard slug="agents"><AgentsPage /></Guard>} />
         <Route path="admin" element={<Guard slug="admin"><AdminPage /></Guard>} />
+        <Route path="admin/github" element={<Guard slug="admin"><GitHubIntegrationPage /></Guard>} />
         <Route path="release-readiness" element={<Guard slug="release-readiness"><ReleaseReadinessPage /></Guard>} />
       </Route>
       <Route path="*" element={<RootRedirect />} />

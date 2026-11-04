@@ -6,6 +6,7 @@
   "workspaces": [
     "backend",
     "frontend",
+    "e2e",
     "packages/agent-mcp",
     "packages/switch-agent-runner"
   ],
@@ -15,6 +16,8 @@
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "test": "npm run test -w backend",
+    "test:integration": "AGENTQA_INTEGRATION=1 npm run test -w backend",
+    "test:e2e": "npm run test -w e2e",
     "docker:up": "docker compose up -d postgres",
     "setup": "npm install && npm run docker:up && npm run db:migrate && npm run db:seed"
   },

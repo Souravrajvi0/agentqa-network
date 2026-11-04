@@ -64,7 +64,28 @@ Register agents in the UI (Agents view) and attach MCP in Claude Code/Codex per 
 
 ```bash
 npm run test -w backend
+AGENTQA_INTEGRATION=1 DATABASE_URL=postgresql://agentqa:agentqa_dev@localhost:5433/agentqa npm run test -w backend
+npm run test -w frontend
 ```
+
+### Playwright E2E (delivery)
+
+```bash
+npm install -w e2e
+npx playwright install chromium --with-deps   # once per machine
+# Start backend (:4000) and frontend (:5170) or let Playwright start them
+AGENTQA_E2E_BASE_URL=http://localhost:5170 AGENTQA_E2E_NO_SERVER=1 npm run test:e2e
+```
+
+Optional: `AGENTQA_E2E_LEAD_EMAIL`, `AGENTQA_E2E_QA_EMAIL`, `AGENTQA_E2E_PASSWORD`, `AGENTQA_E2E_AGENT_KEY`.
+
+### GitHub webhook (per project)
+
+1. Open **Admin → GitHub integration** (Administrator).
+2. Save owner, repo, default branch, and webhook secret.
+3. In GitHub → Webhooks, point to `{API}/api/integrations/github/webhook`, secret, event **Workflow runs**.
+
+See `DELIVERY_COMPLETION_REPORT.md` for delivery pipeline completion details.
 
 ## Demo scenarios
 

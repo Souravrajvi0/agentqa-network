@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { ErrorText, PageHeader } from "../components/ui";
 import { invalidateProjectQueries } from "../hooks/useTestingContext";
@@ -129,16 +129,37 @@ export function AdminPage() {
         ) : null}
       </section>
       <section className="card mb-4 space-y-2">
-        <h2 className="font-medium">Switch integration</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-medium">Switch integration</h2>
+          <span className="chip text-xs">{switchStatus?.status ?? "unknown"}</span>
+        </div>
         <p className="text-sm text-body-theme">{switchStatus?.message}</p>
-        <p className="text-xs text-label">Status: {switchStatus?.status ?? "unknown"}</p>
+        <dl className="grid gap-1 text-xs text-label sm:grid-cols-2">
+          <div>Bridge configured: {switchStatus?.bridgeConfigured ? "Yes" : "No"}</div>
+          <div>Runner connected: {switchStatus?.runnerConnected ? "Yes" : "No"}</div>
+          <div>
+            Last outbound:{" "}
+            {switchStatus?.lastOutboundAt ? new Date(switchStatus.lastOutboundAt).toLocaleString() : "—"}
+          </div>
+          <div>Last error: {switchStatus?.lastCommunicationError ?? "—"}</div>
+        </dl>
+        {switchStatus?.setupSteps?.length ? (
+          <ol className="list-decimal pl-4 text-xs text-muted">
+            {switchStatus.setupSteps.map((step: string) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        ) : null}
         <ul className="text-xs text-muted">
           {(switchStatus?.projectRooms ?? []).map((r: any) => (
             <li key={r.id}>
-              {r.roomName} ({r.roomId})
+              {r.roomName} ({r.roomId}) {r.enabled === false ? "— disabled" : ""}
             </li>
           ))}
         </ul>
+        <Link className="text-[12px] text-accent" to={`/projects/${projectId}/admin/github`}>
+          GitHub integration settings →
+        </Link>
       </section>
       <section className="card mb-4 space-y-2">
         <h2 className="font-medium">Link Switch room</h2>

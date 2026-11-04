@@ -11,6 +11,14 @@ import {
 import { approveRetestScope, createCiGateOverride, proposeRetestScope } from "../services/retestScope.js";
 import { upsertCiRunFromGitHub, mapGitHubWorkflowStatus } from "../services/ciRuns.js";
 import { recordDeliveryEvent } from "../services/deliveryTimeline.js";
+import { getGitHubIntegrationPublicView } from "../services/githubIntegration.js";
+import {
+  acceptQaHandoff,
+  completeQaHandoff,
+  getQaHandoffDetail,
+  recordHandoffExecution,
+} from "../services/qaHandoffs.js";
+import { ConflictError } from "../lib/errors.js";
 
 async function authProject(req: Parameters<typeof requireUser>[0], projectId: string) {
   const auth = await requireUser(req);
@@ -34,9 +42,10 @@ deliveryRouter.get(
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
     const ciStatus = typeof req.query.ciStatus === "string" ? req.query.ciStatus : undefined;
     const blocked = req.query.blocked === "true";
+    const q = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
     const page = Math.max(1, Number(req.query.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize ?? 25)));
-    const data = await getDeliveryPipeline(projectId, { status, ciStatus, blocked, page, pageSize });
+    const data = await getDeliveryPipeline(projectId, { status, ciStatus, blocked, page, pageSize, q });
     res.json(data);
   }),
 );
@@ -65,21 +74,66 @@ qaInboxRouter.get(
   }),
 );
 
+qaInboxRouter.get(
+  "/:handoffId",
+  asyncHandler(async (req, res) => {
+    const { projectId, handoffId } = req.params as { projectId: string; handoffId: string };
+    await authProject(req, projectId);
+    const detail = await getQaHandoffDetail(projectId, handoffId);
+    if (!detail) return res.status(404).json({ error: "Handoff not found" });
+    res.json(detail);
+  }),
+);
+
 qaInboxRouter.post(
   "/:handoffId/accept",
   asyncHandler(async (req, res) => {
     const { projectId, handoffId } = req.params as { projectId: string; handoffId: string };
     const auth = await requireUser(req);
+    try {
+      const result = await acceptQaHandoff({ projectId, handoffId, userId: auth.userId });
+      res.json(result);
+    } catch (e) {
+      if (e instanceof ConflictError) {
+        return res.status(409).json({ error: e.message, code: "CONFLICT" });
+      }
+      throw e;
+    }
+  }),
+);
+
+qaInboxRouter.post(
+  "/:handoffId/executions",
+  asyncHandler(async (req, res) => {
+    const { projectId, handoffId } = req.params as { projectId: string; handoffId: string };
+    const auth = await requireHumanUser(req);
     await requireProjectRole(auth.userId, projectId, ["QA_ENGINEER", "QA_LEAD", "ADMINISTRATOR"]);
-    const handoff = await prisma.qAHandoff.findFirst({
-      where: { id: handoffId, projectId },
+    const body = z
+      .object({
+        testCaseId: z.string(),
+        status: z.enum(["PASSED", "FAILED", "BLOCKED", "NOT_RUN"]),
+        notes: z.string().optional(),
+        actualResults: z.string().optional(),
+      })
+      .parse(req.body);
+    const result = await recordHandoffExecution({
+      projectId,
+      handoffId,
+      userId: auth.userId,
+      ...body,
     });
-    if (!handoff) return res.status(404).json({ error: "Handoff not found" });
-    const updated = await prisma.qAHandoff.update({
-      where: { id: handoffId },
-      data: { status: "ACCEPTED", assignedToUserId: auth.userId, acceptedAt: new Date() },
-    });
-    res.json({ handoff: updated });
+    res.status(201).json(result);
+  }),
+);
+
+qaInboxRouter.post(
+  "/:handoffId/complete",
+  asyncHandler(async (req, res) => {
+    const { projectId, handoffId } = req.params as { projectId: string; handoffId: string };
+    const auth = await requireHumanUser(req);
+    await requireProjectRole(auth.userId, projectId, ["QA_ENGINEER", "QA_LEAD", "ADMINISTRATOR"]);
+    const result = await completeQaHandoff({ projectId, handoffId, userId: auth.userId });
+    res.json(result);
   }),
 );
 
@@ -128,6 +182,7 @@ ciRouter.post(
   asyncHandler(async (req, res) => {
     const { projectId } = req.params as { projectId: string };
     const auth = await requireHumanUser(req);
+    await requireProjectRole(auth.userId, projectId, ["QA_LEAD", "ADMINISTRATOR"]);
     const body = z
       .object({
         ciRunId: z.string(),
@@ -141,7 +196,11 @@ ciRouter.post(
       actorUserId: auth.userId,
       ...body,
     });
-    res.status(201).json({ override });
+    const actor = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { id: true, name: true, email: true },
+    });
+    res.status(201).json({ override, actor });
   }),
 );
 
@@ -185,17 +244,12 @@ githubIntegrationRouter.get(
   asyncHandler(async (req, res) => {
     const { projectId } = req.params as { projectId: string };
     await authProject(req, projectId);
-    const integration = await prisma.gitHubProjectIntegration.findUnique({ where: { projectId } });
-    if (!integration) return res.json({ integration: null });
-    res.json({
-      integration: {
-        owner: integration.owner,
-        repo: integration.repo,
-        defaultBranch: integration.defaultBranch,
-        enabled: integration.enabled,
-        webhookUrl: `${req.protocol}://${req.get("host")}/api/integrations/github/webhook`,
-      },
+    const view = await getGitHubIntegrationPublicView({
+      projectId,
+      host: req.get("host") ?? "localhost",
+      protocol: req.protocol,
     });
+    res.json(view);
   }),
 );
 
@@ -207,16 +261,36 @@ githubIntegrationRouter.put(
     await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR"]);
     const body = z
       .object({
-        owner: z.string(),
-        repo: z.string(),
-        webhookSecret: z.string().min(8),
+        owner: z.string().min(1),
+        repo: z.string().min(1),
         defaultBranch: z.string().default("main"),
+        enabled: z.boolean().default(true),
+        webhookSecret: z.string().min(8).optional(),
       })
       .parse(req.body);
+
+    const existing = await prisma.gitHubProjectIntegration.findUnique({ where: { projectId } });
+    if (!existing && !body.webhookSecret) {
+      return res.status(400).json({ error: "webhookSecret required for new integration", code: "BAD_REQUEST" });
+    }
+
     const integration = await prisma.gitHubProjectIntegration.upsert({
       where: { projectId },
-      create: { projectId, ...body },
-      update: { owner: body.owner, repo: body.repo, webhookSecret: body.webhookSecret, defaultBranch: body.defaultBranch },
+      create: {
+        projectId,
+        owner: body.owner,
+        repo: body.repo,
+        defaultBranch: body.defaultBranch,
+        enabled: body.enabled,
+        webhookSecret: body.webhookSecret!,
+      },
+      update: {
+        owner: body.owner,
+        repo: body.repo,
+        defaultBranch: body.defaultBranch,
+        enabled: body.enabled,
+        ...(body.webhookSecret ? { webhookSecret: body.webhookSecret } : {}),
+      },
     });
     await recordDeliveryEvent({
       projectId,
@@ -225,6 +299,57 @@ githubIntegrationRouter.put(
       title: "GitHub integration configured",
       entityType: "GitHubProjectIntegration",
       entityId: integration.id,
+    });
+    const view = await getGitHubIntegrationPublicView({
+      projectId,
+      host: req.get("host") ?? "localhost",
+      protocol: req.protocol,
+    });
+    res.json({ ok: true, ...view });
+  }),
+);
+
+githubIntegrationRouter.post(
+  "/rotate-secret",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params as { projectId: string };
+    const auth = await requireHumanUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR"]);
+    const body = z.object({ webhookSecret: z.string().min(8) }).parse(req.body);
+    const existing = await prisma.gitHubProjectIntegration.findUnique({ where: { projectId } });
+    if (!existing) return res.status(404).json({ error: "Integration not configured" });
+    await prisma.gitHubProjectIntegration.update({
+      where: { projectId },
+      data: { webhookSecret: body.webhookSecret },
+    });
+    await recordDeliveryEvent({
+      projectId,
+      actorUserId: auth.userId,
+      kind: "integration.github.secret_rotated",
+      title: "GitHub webhook secret rotated",
+      entityType: "GitHubProjectIntegration",
+      entityId: existing.id,
+    });
+    res.json({ ok: true, secretConfigured: true });
+  }),
+);
+
+export const switchRunnerRouter = Router({ mergeParams: true });
+
+switchRunnerRouter.post(
+  "/heartbeat",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params as { projectId: string };
+    const token = req.headers["x-switch-runner-token"];
+    const expected = process.env.SWITCH_RUNNER_TOKEN;
+    if (!expected || token !== expected) {
+      return res.status(401).json({ error: "Invalid runner token", code: "UNAUTHORIZED" });
+    }
+    const body = z.object({ runnerLabel: z.string().optional() }).parse(req.body ?? {});
+    await prisma.switchRunnerHeartbeat.upsert({
+      where: { projectId },
+      create: { projectId, runnerLabel: body.runnerLabel, lastSeenAt: new Date() },
+      update: { runnerLabel: body.runnerLabel, lastSeenAt: new Date() },
     });
     res.json({ ok: true });
   }),

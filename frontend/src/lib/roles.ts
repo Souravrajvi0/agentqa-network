@@ -70,6 +70,10 @@ export function canManageProject(role: ProjectRole | null | undefined): boolean 
   return role === "ADMINISTRATOR";
 }
 
+export function canOverrideCiGate(role: ProjectRole | null | undefined): boolean {
+  return role === "ADMINISTRATOR" || role === "QA_LEAD";
+}
+
 export function canManageMembers(role: ProjectRole | null | undefined): boolean {
   return role === "ADMINISTRATOR" || role === "QA_LEAD";
 }

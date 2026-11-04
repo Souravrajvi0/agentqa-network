@@ -35,6 +35,7 @@ import {
   githubIntegrationRouter,
   qaInboxRouter,
   retestRouter,
+  switchRunnerRouter,
 } from "./delivery.js";
 import { evaluateReleaseReadiness } from "../services/releaseReadiness.js";
 import { getQaInbox } from "../services/deliveryPipeline.js";
@@ -1074,6 +1075,7 @@ apiRouter.use("/projects/:projectId/qa-inbox", qaInboxRouter);
 apiRouter.use("/projects/:projectId/retest-scopes", retestRouter);
 apiRouter.use("/projects/:projectId/ci", ciRouter);
 apiRouter.use("/projects/:projectId/integrations/github", githubIntegrationRouter);
+apiRouter.use("/projects/:projectId/switch/runner", switchRunnerRouter);
 
 apiRouter.get(
   "/projects/:projectId/defects",

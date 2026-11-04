@@ -1,6 +1,6 @@
 # AgentQA Network — Implementation Matrix
 
-Last updated: mandate completion pass on `feat/full-product-mandate-2ff4`.
+Last updated: delivery completion pass on `feat/delivery-completion-3be4`.
 
 | Feature | Database | Backend | Frontend | Tests | Status |
 |---|---|---|---|---|---|
@@ -13,7 +13,7 @@ Last updated: mandate completion pass on `feat/full-product-mandate-2ff4`.
 | Builds and evidence | ✓ | ✓ executions per build | ✓ execution + workspace | Readiness logic | **Complete (core)** |
 | Release readiness | — | ✓ build + stale P0/P1 | ✓ blockers UI | Agent tool | **Complete (core)** |
 | Agents and MCP | ✓ | ✓ agent-tools REST | ✓ register UI | Manual | **Complete (core)** |
-| Switch integration | ✓ rooms | Outbound + status API | Admin status + link | — | **Partial (no live creds)** |
+| Switch integration | ✓ rooms + heartbeat | Outbound + status API + event notify | Admin status + GitHub link | E2E partial | **Partial (no live creds)** |
 | Notifications | ✓ | ✓ create/list/read | ✓ bell | — | **Partial** |
 | Global search | — | ✓ `/search` | ✓ ⌘K entities | — | **Complete** |
 | Audit trail | ✓ | ✓ write + list | ✓ Admin view | — | **Complete (core)** |
