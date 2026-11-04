@@ -29,19 +29,36 @@ export function NotificationBell() {
   const unread = (data?.notifications ?? []).filter((n) => !n.read);
 
   return (
-    <div className="relative mb-4">
+    <div className="relative">
       <details className="group">
-        <summary className="cursor-pointer list-none rounded-sm border-theme bg-[var(--bg-hover)] px-3 py-2 text-[13px] text-label transition duration-150 hover:border-[var(--border-strong)]">
-          Notifications
+        <summary
+          className="btn-ghost relative h-8 w-8 shrink-0 list-none px-0 [&::-webkit-details-marker]:hidden"
+          title="Notifications"
+          aria-label="Notifications"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="mx-auto">
+            <path
+              d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <path d="M9.5 21a2.5 2.5 0 0 0 5 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
           {unread.length ? (
-            <span className="chip ml-2 text-heading">{unread.length}</span>
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm border border-[var(--bg-canvas)] bg-rose-600 px-0.5 text-[9px] font-bold text-white">
+              {unread.length > 9 ? "9+" : unread.length}
+            </span>
           ) : null}
         </summary>
-        <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-sm border-theme bg-panel p-1.5 shadow-glow">
+        <div className="absolute right-0 z-50 mt-2 max-h-80 w-80 overflow-auto rounded-sm border-theme bg-panel p-1.5 shadow-glow">
+          <p className="border-b px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted" style={{ borderColor: "var(--divider)" }}>
+            Notifications
+          </p>
           {(data?.notifications ?? []).length === 0 ? (
-            <p className="p-2 text-xs text-muted">No notifications yet</p>
+            <p className="p-3 text-xs text-muted">No notifications yet</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1 p-1">
               {(data?.notifications ?? []).map((n) => (
                 <li key={n.id} className="rounded-sm border p-2.5 text-[11px]" style={{ borderColor: "var(--border-faint)" }}>
                   <p className="font-medium text-heading">{n.title}</p>
@@ -57,7 +74,7 @@ export function NotificationBell() {
                       </Link>
                     ) : null}
                     {!n.read ? (
-                      <button className="text-label hover:text-heading" onClick={() => markRead.mutate(n.id)}>
+                      <button type="button" className="text-label hover:text-heading" onClick={() => markRead.mutate(n.id)}>
                         Mark read
                       </button>
                     ) : null}

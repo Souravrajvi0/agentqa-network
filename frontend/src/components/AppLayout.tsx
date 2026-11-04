@@ -69,22 +69,23 @@ export function AppLayout() {
       <CommandPalette projectId={selectedProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
       <header className="shell-header">
         <div className="mx-auto flex h-12 max-w-[1600px] items-center gap-3 px-4 lg:px-6">
-          <button type="button" className="btn-ghost px-2 lg:hidden" onClick={() => setSidebarOpen((v) => !v)}>
+          <button type="button" className="btn-ghost shrink-0 px-2 lg:hidden" onClick={() => setSidebarOpen((v) => !v)}>
             ☰
           </button>
-          <div className="flex items-center gap-2.5">
-            <div className="logo-mark h-7 w-7">AQ</div>
-            <div className="hidden sm:block">
-              <p className="text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
+
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="logo-mark h-7 w-7 shrink-0">AQ</div>
+            <div className="hidden min-w-0 sm:block">
+              <p className="truncate text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
               <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-muted">Switch orchestration</p>
             </div>
           </div>
 
-          <div className="mx-2 hidden h-6 w-px md:block" style={{ backgroundColor: "var(--border-subtle)" }} />
+          <div className="hidden h-6 w-px shrink-0 md:block" style={{ backgroundColor: "var(--border-subtle)" }} />
 
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <select
-              className="input h-8 max-w-[140px] truncate py-0 text-[11px] font-medium text-heading sm:max-w-[220px]"
+              className="input h-8 max-w-[120px] truncate py-0 text-[11px] font-medium text-heading sm:max-w-[200px]"
               value={selectedProjectId ?? ""}
               onChange={(e) => {
                 setSelectedProjectId(e.target.value);
@@ -97,15 +98,14 @@ export function AppLayout() {
                 </option>
               ))}
             </select>
-            <span className="chip hidden font-mono md:inline">v{releaseLabel}</span>
+            <span className="chip hidden shrink-0 font-mono lg:inline">v{releaseLabel}</span>
           </div>
 
-          <div className="hidden flex-1 justify-center md:flex">
-            <CommandTrigger onClick={() => setPaletteOpen(true)} />
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden items-center gap-2 lg:flex">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="hidden md:block">
+              <CommandTrigger onClick={() => setPaletteOpen(true)} />
+            </div>
+            <div className="hidden items-center gap-2 xl:flex">
               <span
                 className={clsx(
                   "chip gap-1.5 normal-case tracking-normal",
@@ -118,10 +118,15 @@ export function AppLayout() {
               <PresenceStack agents={agentsData?.agents ?? []} />
             </div>
             <ThemeToggle />
-            <button type="button" className="btn-primary hidden sm:inline-flex" onClick={() => selectedProjectId && navigate(`/projects/${selectedProjectId}/execution`)}>
+            <button
+              type="button"
+              className="btn-primary hidden sm:inline-flex"
+              onClick={() => selectedProjectId && navigate(`/projects/${selectedProjectId}/execution`)}
+            >
               Run tests
             </button>
-            <span className="hidden max-w-[120px] truncate text-xs font-medium text-heading xl:inline">{user?.name}</span>
+            <NotificationBell />
+            <span className="hidden max-w-[100px] truncate pl-1 text-xs font-medium text-heading 2xl:inline">{user?.name}</span>
           </div>
         </div>
       </header>
@@ -134,7 +139,6 @@ export function AppLayout() {
           )}
           style={{ borderColor: "var(--divider)" }}
         >
-          <NotificationBell />
           {selectedProjectId
             ? navSections.map((section) => (
                 <div key={section.title} className="nav-section">
