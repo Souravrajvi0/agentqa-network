@@ -1,0 +1,638 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalRole {
+  ADMINISTRATOR
+  QA_LEAD
+  QA_ENGINEER
+  DEVELOPER
+}
+
+enum ProjectRole {
+  ADMINISTRATOR
+  QA_LEAD
+  QA_ENGINEER
+  DEVELOPER
+  VIEWER
+}
+
+enum PriorityLevel {
+  P0
+  P1
+  P2
+  P3
+}
+
+enum AssignmentStatus {
+  AVAILABLE
+  CLAIMED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  RELEASED
+}
+
+enum ExecutionStatus {
+  NOT_RUN
+  RUNNING
+  PASSED
+  FAILED
+  BLOCKED
+  CANCELLED
+}
+
+enum DefectStatus {
+  NEW
+  TRIAGED
+  IN_PROGRESS
+  READY_FOR_QA
+  VERIFIED
+  CLOSED
+  REOPENED
+  REJECTED
+}
+
+enum DesignDecisionStatus {
+  PROPOSED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum ChangeRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum AgentType {
+  DEVELOPMENT
+  QA
+  QA_COORDINATION
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  URGENT_CHANGE
+  PRIORITY_CHANGE
+  DESIGN_CLARIFICATION
+  DEFECT
+  AGENT_FINDING
+  APPROVAL_REQUEST
+  GENERAL
+}
+
+enum KnowledgeType {
+  FINDING
+  CLARIFICATION
+  KNOWN_ISSUE
+  TESTING_NOTE
+  WORKAROUND
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  globalRole   GlobalRole @default(QA_ENGINEER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  projectMembers     ProjectMember[]
+  assignments        TestAssignment[]     @relation("AssignmentAssignee")
+  executions         TestExecution[]
+  reportedDefects    Defect[]               @relation("DefectReporter")
+  assignedDefects    Defect[]               @relation("DefectAssignee")
+  designDecisions    DesignDecision[]       @relation("DecisionAuthor")
+  approvedDecisions  DesignDecision[]       @relation("DecisionApprover")
+  changeRequests     DeveloperChangeRequest[]
+  knowledgeEntries   KnowledgeEntry[]
+  notifications      Notification[]
+  agentRegistrations AgentRegistration[]    @relation("AgentOwner")
+  auditEvents        AuditEvent[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members              ProjectMember[]
+  modules              AppModule[]
+  releases             Release[]
+  testCases            TestCase[]
+  testCycles           TestCycle[]
+  features             Feature[]
+  requirements         Requirement[]
+  designDecisions      DesignDecision[]
+  changeRequests       DeveloperChangeRequest[]
+  defects              Defect[]
+  knowledgeEntries     KnowledgeEntry[]
+  agentRegistrations   AgentRegistration[]
+  switchRoomLinks      SwitchRoomLink[]
+  priorityRules        PriorityRuleConfig?
+  environments         Environment[]
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole
+  joinedAt  DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model AppModule {
+  id          String  @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  features   Feature[]
+  testCases  TestCase[]
+
+  @@unique([projectId, name])
+}
+
+model Feature {
+  id          String  @id @default(cuid())
+  projectId   String
+  moduleId    String?
+  name        String
+  description String?
+
+  project         Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  module          AppModule?               @relation(fields: [moduleId], references: [id])
+  testCases       TestCase[]
+  designDecisions DesignDecision[]
+  changeRequests  DeveloperChangeRequest[]
+  defects         Defect[]
+
+  @@unique([projectId, name])
+}
+
+model Requirement {
+  id          String @id @default(cuid())
+  projectId   String
+  externalId  String
+  title       String
+  description String?
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases TestCase[] @relation("RequirementTestCases")
+
+  @@unique([projectId, externalId])
+}
+
+model Release {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  version     String
+  description String?
+  targetDate  DateTime?
+  status      String   @default("PLANNED")
+  createdAt   DateTime @default(now())
+
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  builds       Build[]
+  testCycles   TestCycle[]
+  changeRequests DeveloperChangeRequest[]
+
+  @@unique([projectId, version])
+}
+
+model Build {
+  id        String   @id @default(cuid())
+  releaseId String
+  label     String
+  gitRef    String?
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  release    Release         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  executions TestExecution[]
+  defects    Defect[]
+  changeRequests DeveloperChangeRequest[]
+
+  @@unique([releaseId, label])
+}
+
+model Environment {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  baseUrl   String?
+  config    Json?
+
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  executions TestExecution[]
+
+  @@unique([projectId, name])
+}
+
+model TestCase {
+  id                 String        @id @default(cuid())
+  projectId          String
+  externalId         String
+  title              String
+  description        String?
+  preconditions      String?
+  steps              Json
+  expectedResults    String?
+  moduleId           String?
+  featureId          String?
+  testType           String        @default("FUNCTIONAL")
+  priority           PriorityLevel @default(P2)
+  businessCriticality Int          @default(3)
+  tags               String[]      @default([])
+  automationAvailable Boolean      @default(false)
+  automationCommand  String?
+  currentVersion     Int           @default(1)
+  archived           Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  module      AppModule?   @relation(fields: [moduleId], references: [id])
+  feature     Feature?     @relation(fields: [featureId], references: [id])
+  requirements Requirement[] @relation("RequirementTestCases")
+  versions    TestCaseVersion[]
+  cycleCases  TestCycleCase[]
+  designLinks DesignDecisionTestCase[]
+  knowledge   KnowledgeEntry[]
+  defects     Defect[]
+  priorityRecs PriorityRecommendation[]
+
+  @@unique([projectId, externalId])
+}
+
+model TestCaseVersion {
+  id              String   @id @default(cuid())
+  testCaseId      String
+  version         Int
+  snapshot        Json
+  changedByUserId String?
+  changeNote      String?
+  createdAt       DateTime @default(now())
+
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([testCaseId, version])
+}
+
+model TestCycle {
+  id          String   @id @default(cuid())
+  projectId   String
+  releaseId   String
+  name        String
+  description String?
+  status      String   @default("ACTIVE")
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  cases   TestCycleCase[]
+}
+
+model TestCycleCase {
+  id           String        @id @default(cuid())
+  testCycleId  String
+  testCaseId   String
+  plannedPriority PriorityLevel @default(P2)
+  allowParallel Boolean      @default(false)
+  maxParallel   Int           @default(1)
+
+  testCycle   TestCycle        @relation(fields: [testCycleId], references: [id], onDelete: Cascade)
+  testCase    TestCase         @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  assignment  TestAssignment?
+  executions  TestExecution[]
+  recommendations PriorityRecommendation[]
+
+  @@unique([testCycleId, testCaseId])
+}
+
+model TestAssignment {
+  id              String           @id @default(cuid())
+  testCycleCaseId String           @unique
+  assigneeUserId  String?
+  assigneeAgentId String?
+  status          AssignmentStatus @default(AVAILABLE)
+  claimToken      String?
+  lockVersion     Int              @default(0)
+  claimedAt       DateTime?
+  completedAt     DateTime?
+  blockedReason   String?
+  intentionalDuplicate Boolean     @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  testCycleCase TestCycleCase @relation(fields: [testCycleCaseId], references: [id], onDelete: Cascade)
+  assigneeUser  User?         @relation("AssignmentAssignee", fields: [assigneeUserId], references: [id])
+  assigneeAgent AgentRegistration? @relation(fields: [assigneeAgentId], references: [id])
+}
+
+model TestExecution {
+  id              String          @id @default(cuid())
+  testCycleCaseId String
+  buildId         String
+  environmentId   String?
+  executedByUserId String?
+  executedByAgentId String?
+  status          ExecutionStatus @default(NOT_RUN)
+  actualResults   String?
+  notes           String?
+  durationMs      Int?
+  browser         String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  isStale         Boolean         @default(false)
+  staleReason     String?
+  createdAt       DateTime        @default(now())
+
+  testCycleCase TestCycleCase @relation(fields: [testCycleCaseId], references: [id], onDelete: Cascade)
+  build         Build         @relation(fields: [buildId], references: [id])
+  environment   Environment?  @relation(fields: [environmentId], references: [id])
+  executedByUser User?        @relation(fields: [executedByUserId], references: [id])
+  executedByAgent AgentRegistration? @relation(fields: [executedByAgentId], references: [id])
+  evidence      TestEvidence[]
+  defects       Defect[]
+}
+
+model TestEvidence {
+  id          String   @id @default(cuid())
+  executionId String
+  type        String
+  filePath    String?
+  content     String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  execution TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+}
+
+model Defect {
+  id              String       @id @default(cuid())
+  projectId       String
+  externalId      String
+  summary         String
+  description     String?
+  severity        String       @default("MEDIUM")
+  priority        PriorityLevel @default(P2)
+  reproductionSteps String?
+  expectedBehavior String?
+  actualBehavior  String?
+  testCaseId      String?
+  executionId     String?
+  featureId       String?
+  buildId         String?
+  environmentId   String?
+  reporterUserId  String
+  assigneeUserId  String?
+  status          DefectStatus @default(NEW)
+  resolution      String?
+  designConflict  Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase   TestCase?      @relation(fields: [testCaseId], references: [id])
+  execution  TestExecution? @relation(fields: [executionId], references: [id])
+  feature    Feature?       @relation(fields: [featureId], references: [id])
+  build      Build?         @relation(fields: [buildId], references: [id])
+  reporter   User           @relation("DefectReporter", fields: [reporterUserId], references: [id])
+  assignee   User?          @relation("DefectAssignee", fields: [assigneeUserId], references: [id])
+}
+
+model DesignDecision {
+  id                String               @id @default(cuid())
+  projectId         String
+  externalId        String
+  title             String
+  description       String
+  rationale         String?
+  expectedBehavior  String
+  featureId         String?
+  authorUserId      String
+  approverUserId    String?
+  status            DesignDecisionStatus @default(PROPOSED)
+  effectiveVersion  String?
+  references        Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  project      Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  feature      Feature?                 @relation(fields: [featureId], references: [id])
+  author       User                     @relation("DecisionAuthor", fields: [authorUserId], references: [id])
+  approver     User?                    @relation("DecisionApprover", fields: [approverUserId], references: [id])
+  testCases    DesignDecisionTestCase[]
+  clarifications DesignClarification[]
+  history      DesignDecisionHistory[]
+}
+
+model DesignDecisionTestCase {
+  designDecisionId String
+  testCaseId       String
+
+  designDecision DesignDecision @relation(fields: [designDecisionId], references: [id], onDelete: Cascade)
+  testCase       TestCase       @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@id([designDecisionId, testCaseId])
+}
+
+model DesignDecisionHistory {
+  id               String   @id @default(cuid())
+  designDecisionId String
+  snapshot         Json
+  changedAt        DateTime @default(now())
+  note             String?
+
+  designDecision DesignDecision @relation(fields: [designDecisionId], references: [id], onDelete: Cascade)
+}
+
+model DesignClarification {
+  id               String   @id @default(cuid())
+  designDecisionId String
+  requestedByUserId String
+  question         String
+  response         String?
+  status           String   @default("OPEN")
+  createdAt        DateTime @default(now())
+  resolvedAt       DateTime?
+
+  designDecision DesignDecision @relation(fields: [designDecisionId], references: [id], onDelete: Cascade)
+}
+
+model DeveloperChangeRequest {
+  id              String              @id @default(cuid())
+  projectId       String
+  releaseId       String?
+  buildId         String?
+  featureId       String?
+  authorUserId    String
+  title           String
+  description     String
+  urgency         PriorityLevel       @default(P1)
+  status          ChangeRequestStatus @default(DRAFT)
+  impactedTestIds String[]            @default([])
+  missingCoverage String?
+  qaAcknowledged  Boolean             @default(false)
+  approvedByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release Release? @relation(fields: [releaseId], references: [id])
+  build   Build?   @relation(fields: [buildId], references: [id])
+  feature Feature? @relation(fields: [featureId], references: [id])
+  author  User     @relation(fields: [authorUserId], references: [id])
+}
+
+model PriorityRecommendation {
+  id              String        @id @default(cuid())
+  testCaseId      String
+  testCycleCaseId String?
+  recommended     PriorityLevel
+  score           Float
+  reasons         Json
+  source          String        @default("SYSTEM")
+  approved        Boolean       @default(false)
+  approvedByUserId String?
+  createdAt       DateTime      @default(now())
+
+  testCase      TestCase       @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  testCycleCase TestCycleCase? @relation(fields: [testCycleCaseId], references: [id])
+  history       PriorityHistory[]
+}
+
+model PriorityHistory {
+  id                     String        @id @default(cuid())
+  priorityRecommendationId String
+  fromPriority           PriorityLevel?
+  toPriority             PriorityLevel
+  reason                 String
+  changedByUserId        String?
+  createdAt              DateTime      @default(now())
+
+  recommendation PriorityRecommendation @relation(fields: [priorityRecommendationId], references: [id], onDelete: Cascade)
+}
+
+model PriorityRuleConfig {
+  id        String @id @default(cuid())
+  projectId String @unique
+  weights   Json
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeEntry {
+  id          String        @id @default(cuid())
+  projectId   String
+  type        KnowledgeType
+  title       String
+  content     String
+  testCaseId  String?
+  moduleName  String?
+  status      String        @default("ACTIVE")
+  authorUserId String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase TestCase? @relation(fields: [testCaseId], references: [id])
+  author   User      @relation(fields: [authorUserId], references: [id])
+}
+
+model AgentRegistration {
+  id              String    @id @default(cuid())
+  projectId       String
+  ownerUserId     String
+  name            String
+  displayName     String
+  agentType       AgentType
+  switchAgentId   String?
+  switchRoomId    String?
+  apiKeyHash      String
+  apiKeyPrefix    String
+  capabilities    Json
+  isActive        Boolean   @default(true)
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner       User             @relation("AgentOwner", fields: [ownerUserId], references: [id])
+  activities  AgentActivity[]
+  assignments TestAssignment[]
+  executions  TestExecution[]
+}
+
+model AgentActivity {
+  id        String   @id @default(cuid())
+  agentId   String
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  agent AgentRegistration @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model SwitchRoomLink {
+  id          String   @id @default(cuid())
+  projectId   String
+  roomId      String
+  roomName    String
+  bridgeBaseUrl String
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, roomId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  linkPath  String?
+  read      Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  agentId    String?
+  projectId  String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}

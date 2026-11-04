@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agentqa-postgres
+    environment:
+      POSTGRES_USER: agentqa
+      POSTGRES_PASSWORD: agentqa_dev
+      POSTGRES_DB: agentqa
+    ports:
+      - "5432:5432"
+    volumes:
+      - agentqa_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentqa -d agentqa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agentqa-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://agentqa:agentqa_dev@postgres:5432/agentqa
+      JWT_SECRET: change-me-in-production
+      PORT: "4000"
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/automation:/app/automation
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agentqa-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "5173:80"
+
+volumes:
+  agentqa_pg:

@@ -1,0 +1,24 @@
+{
+  "name": "agentqa-network",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AgentQA Network — multi-user QA collaboration with Switch agents",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/agent-mcp",
+    "packages/switch-agent-runner"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w backend & npm run dev -w frontend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "test": "npm run test -w backend",
+    "docker:up": "docker compose up -d postgres",
+    "setup": "npm install && npm run docker:up && npm run db:migrate && npm run db:seed"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
