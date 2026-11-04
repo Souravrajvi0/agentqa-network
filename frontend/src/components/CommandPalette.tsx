@@ -81,15 +81,18 @@ export function CommandPalette({
   );
 }
 
-export function CommandTrigger({ onClick }: { onClick: () => void }) {
+export function CommandTrigger({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="hidden h-8 items-center gap-2 rounded-sm border-theme bg-[var(--bg-hover)] px-3 text-[11px] text-label transition duration-150 hover:border-[var(--border-strong)] md:flex"
+      className={clsx(
+        "flex h-8 w-full items-center justify-between gap-2 rounded-sm border-theme bg-[var(--bg-hover)] px-3 text-[11px] text-label transition duration-150 hover:border-[var(--border-strong)]",
+        className,
+      )}
     >
-      <span>Search & commands</span>
-      <kbd className="surface-inset px-1.5 py-0.5 font-mono text-[10px] text-faint">⌘K</kbd>
+      <span className="truncate">Search & commands</span>
+      <kbd className="surface-inset shrink-0 px-1.5 py-0.5 font-mono text-[10px] text-faint">⌘K</kbd>
     </button>
   );
 }

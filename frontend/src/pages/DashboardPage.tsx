@@ -18,7 +18,7 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title="Overview Dashboard"
-        subtitle={data?.activeCycle ? `${data.activeCycle.name} · Release ${data.activeCycle.release?.version}` : "No active cycle"}
+        subtitle={data?.activeCycle ? data.activeCycle.name : "No active cycle"}
         actions={
           data?.activeCycle ? (
             <Link to={`/projects/${projectId}/my-workspace`} className="btn-primary">

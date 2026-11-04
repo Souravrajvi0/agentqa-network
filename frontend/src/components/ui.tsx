@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { useAuthStore } from "../stores/auth";
 
 /** Priority badges — high contrast; urgency reads at a glance */
 const priorityStyles: Record<string, string> = {
@@ -72,10 +73,15 @@ export function ErrorText({ message }: { message?: string | null }) {
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  const firstName = user?.name?.trim().split(/\s+/)[0] ?? "there";
+
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b pb-6" style={{ borderColor: "var(--divider)" }}>
       <div>
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Workspace</p>
+        <p className="mb-2 text-[13px] text-label">
+          Hi, <span className="font-semibold text-heading">{firstName}</span>
+        </p>
         <h1 className="text-[1.5rem] font-semibold tracking-[-0.03em] text-heading">{title}</h1>
         {subtitle ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-label">{subtitle}</p> : null}
       </div>

@@ -68,12 +68,12 @@ export function AppLayout() {
     <div className="app-canvas min-h-screen">
       <CommandPalette projectId={selectedProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
       <header className="shell-header">
-        <div className="mx-auto flex h-12 max-w-[1600px] items-center gap-3 px-4 lg:px-6">
+        <div className="relative mx-auto flex h-12 max-w-[1600px] items-center gap-3 px-4 lg:px-6">
           <button type="button" className="btn-ghost shrink-0 px-2 lg:hidden" onClick={() => setSidebarOpen((v) => !v)}>
             ☰
           </button>
 
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="logo-mark h-7 w-7 shrink-0">AQ</div>
             <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
@@ -83,7 +83,7 @@ export function AppLayout() {
 
           <div className="hidden h-6 w-px shrink-0 md:block" style={{ backgroundColor: "var(--border-subtle)" }} />
 
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 shrink-0 items-center">
             <select
               className="input h-8 max-w-[120px] truncate py-0 text-[11px] font-medium text-heading sm:max-w-[200px]"
               value={selectedProjectId ?? ""}
@@ -98,13 +98,15 @@ export function AppLayout() {
                 </option>
               ))}
             </select>
-            <span className="chip hidden shrink-0 font-mono lg:inline">v{releaseLabel}</span>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 hidden justify-center px-[min(24rem,28vw)] md:flex">
+            <div className="pointer-events-auto w-full max-w-md">
+              <CommandTrigger onClick={() => setPaletteOpen(true)} />
+            </div>
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <div className="hidden md:block">
-              <CommandTrigger onClick={() => setPaletteOpen(true)} />
-            </div>
             <div className="hidden items-center gap-2 xl:flex">
               <span
                 className={clsx(
@@ -126,7 +128,6 @@ export function AppLayout() {
               Run tests
             </button>
             <NotificationBell />
-            <span className="hidden max-w-[100px] truncate pl-1 text-xs font-medium text-heading 2xl:inline">{user?.name}</span>
           </div>
         </div>
       </header>
