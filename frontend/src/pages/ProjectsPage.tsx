@@ -69,11 +69,7 @@ export function ProjectsPage() {
         </button>
         <ThemeToggle />
       </div>
-      <PageHeader
-        eyebrow="Workspaces"
-        title="Projects"
-        subtitle="Multi-project QA and delivery — each workspace has its own roles, pipeline, and evidence."
-      />
+      <PageHeader title="Projects" subtitle="Multi-project workspaces with project-scoped roles" />
       <ErrorText message={error} />
       {canCreate ? (
         <section className="card mb-6 space-y-2">

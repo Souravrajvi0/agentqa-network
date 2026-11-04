@@ -107,8 +107,7 @@ export function AppLayout() {
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <div className="logo-mark h-7 w-7 shrink-0">AQ</div>
             <div className="hidden min-w-0 sm:block">
-              <p className="truncate font-display text-[13px] font-bold leading-none tracking-tight text-heading">AgentQA</p>
-              <p className="truncate text-[10px] text-muted">Delivery & QA</p>
+              <p className="truncate text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
             </div>
             <div className="hidden min-w-0 sm:block">
               <ProjectSwitcher
