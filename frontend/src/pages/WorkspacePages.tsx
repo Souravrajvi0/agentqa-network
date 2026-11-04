@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { PageHeader, StatusBadge } from "../components/ui";
+import { ErrorText, PageHeader, StatusBadge } from "../components/ui";
+import { invalidateProjectQueries } from "../hooks/useTestingContext";
 
 export function MyWorkspacePage() {
   const { projectId = "" } = useParams();
   const qc = useQueryClient();
-  const { data } = useQuery({
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const { data, isLoading } = useQuery({
     queryKey: ["my-workspace", projectId],
     queryFn: () => api<any>(`/api/projects/${projectId}/my-workspace`),
   });
@@ -14,16 +19,46 @@ export function MyWorkspacePage() {
   const claim = useMutation({
     mutationFn: (assignmentId: string) =>
       api(`/api/assignments/${assignmentId}/claim`, { method: "POST", body: "{}" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-workspace", projectId] }),
+    onSuccess: () => {
+      setError(null);
+      invalidateProjectQueries(qc, projectId);
+    },
+    onError: (e: Error) => setError(e.message),
   });
+
+  const recordManual = useMutation({
+    mutationFn: (payload: {
+      cycleCaseId: string;
+      buildId: string;
+      status: string;
+      notes?: string;
+    }) => api("/api/executions/manual", { method: "POST", body: JSON.stringify(payload) }),
+    onSuccess: () => {
+      setError(null);
+      invalidateProjectQueries(qc, projectId);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const release = useMutation({
+    mutationFn: (assignmentId: string) =>
+      api(`/api/assignments/${assignmentId}/release`, { method: "POST", body: "{}" }),
+    onSuccess: () => invalidateProjectQueries(qc, projectId),
+  });
+
+  const buildId = data?.currentBuild?.id;
 
   return (
     <div>
-      <PageHeader title="My Testing Workspace" subtitle="Assigned work, recommendations, and quick actions" />
+      <PageHeader title="My Testing Workspace" subtitle="Claim work, record manual results, and track assignments" />
+      <ErrorText message={error} />
+      {isLoading ? <p className="text-slate-400">Loading workspace…</p> : null}
+      {!buildId ? <p className="mb-4 text-sm text-amber-200">No current build — seed/migration may be incomplete.</p> : null}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card">
           <h2 className="mb-3 font-medium">My assignments</h2>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3 text-sm">
             {(data?.assignments ?? []).map((a: any) => (
               <li key={a.id} className="rounded-lg border border-slate-800 p-3">
                 <div className="flex items-center justify-between">
@@ -31,10 +66,46 @@ export function MyWorkspacePage() {
                   <StatusBadge value={a.status} />
                 </div>
                 <p className="text-slate-400">{a.testCycleCase.testCase.title}</p>
+                {buildId ? (
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      className="input min-h-[60px]"
+                      placeholder="Actual results / notes"
+                      value={notes[a.id] ?? ""}
+                      onChange={(e) => setNotes((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {(["PASSED", "FAILED", "BLOCKED"] as const).map((status) => (
+                        <button
+                          key={status}
+                          className="btn-ghost"
+                          disabled={recordManual.isPending}
+                          onClick={() =>
+                            recordManual.mutate({
+                              cycleCaseId: a.testCycleCase.id,
+                              buildId,
+                              status,
+                              notes: notes[a.id],
+                            })
+                          }
+                        >
+                          Mark {status}
+                        </button>
+                      ))}
+                      <button className="btn-ghost" onClick={() => release.mutate(a.id)}>
+                        Release
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </li>
             ))}
+            {!data?.assignments?.length && !isLoading ? (
+              <p className="text-slate-500">No active assignments — claim a recommended test.</p>
+            ) : null}
           </ul>
         </section>
+
         <section className="card">
           <h2 className="mb-3 font-medium">Recommended next tests</h2>
           <ul className="space-y-2 text-sm">
@@ -48,11 +119,20 @@ export function MyWorkspacePage() {
                   <StatusBadge value={item.recommendation?.recommended ?? item.testCase.priority} />
                 </div>
                 {item.assignment?.status === "AVAILABLE" ? (
-                  <button className="btn-primary mt-2" onClick={() => claim.mutate(item.assignment.id)}>
+                  <button
+                    className="btn-primary mt-2"
+                    disabled={claim.isPending}
+                    onClick={() => claim.mutate(item.assignment.id)}
+                  >
                     Claim
                   </button>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-200">Already claimed by another teammate</p>
+                  <p className="mt-2 text-xs text-amber-200">
+                    Owned by{" "}
+                    {item.assignment?.assigneeUser?.name ??
+                      item.assignment?.assigneeAgent?.displayName ??
+                      "another participant"}
+                  </p>
                 )}
               </li>
             ))}
@@ -65,7 +145,7 @@ export function MyWorkspacePage() {
 
 export function TeamBoardPage() {
   const { projectId = "" } = useParams();
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["team-board", projectId],
     queryFn: () => api<any>(`/api/projects/${projectId}/team-board`),
   });
@@ -77,6 +157,7 @@ export function TeamBoardPage() {
   return (
     <div>
       <PageHeader title="Team Testing Board" subtitle="Assignments, agents, and duplicate-work visibility" />
+      {isLoading ? <p className="text-slate-400">Loading board…</p> : null}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="card lg:col-span-2">
           <h2 className="mb-3 font-medium">{data?.cycle?.name ?? "Cycle"}</h2>

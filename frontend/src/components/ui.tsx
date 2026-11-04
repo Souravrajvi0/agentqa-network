@@ -29,6 +29,11 @@ export function EmptyState({ title, description }: { title: string; description?
   );
 }
 
+export function ErrorText({ message }: { message?: string | null }) {
+  if (!message) return null;
+  return <p className="text-sm text-red-300">{message}</p>;
+}
+
 export function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-6">

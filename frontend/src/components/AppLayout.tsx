@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/auth";
 import { useRealtime } from "../hooks/useRealtime";
+import { NotificationBell } from "./NotificationBell";
 import clsx from "clsx";
 
 const links = [
@@ -13,6 +14,7 @@ const links = [
   ["execution", "Execution"],
   ["defects", "Defects"],
   ["agents", "Agents"],
+  ["admin", "Admin"],
   ["release-readiness", "Release Readiness"],
 ] as const;
 
@@ -29,6 +31,7 @@ export function AppLayout() {
           <p className="text-lg font-semibold">Switch-powered QA</p>
           <p className="text-xs text-slate-400">{user?.name}</p>
         </div>
+        <NotificationBell />
         <nav className="space-y-1">
           {selectedProjectId
             ? links.map(([slug, label]) => (

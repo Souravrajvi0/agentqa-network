@@ -17,6 +17,11 @@ import {
   hashAgentKey,
   requireUser as requireUserAuth,
 } from "../lib/auth.js";
+import {
+  assertAgentCapability,
+  defaultCapabilities,
+  parseCapabilities,
+} from "../lib/agentCapabilities.js";
 
 export const apiRouter = Router();
 
@@ -204,7 +209,102 @@ apiRouter.get(
     const activeCycle = await prisma.testCycle.findFirst({ where: { projectId, status: "ACTIVE" } });
     const recommended = activeCycle ? await getPrioritizedQueue(activeCycle.id, 5) : [];
 
-    res.json({ assignments, recommended });
+    const currentBuild = activeCycle
+      ? await prisma.build.findFirst({
+          where: { releaseId: activeCycle.releaseId, isCurrent: true },
+        })
+      : null;
+
+    res.json({ assignments, recommended, activeCycle, currentBuild });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId/execution-center",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    await authProject(req, projectId);
+
+    const activeCycle = await prisma.testCycle.findFirst({
+      where: { projectId, status: "ACTIVE" },
+      include: { release: { include: { builds: true } } },
+    });
+    if (!activeCycle) {
+      res.json({ activeCycle: null, currentBuild: null, automatedCases: [] });
+      return;
+    }
+
+    const currentBuild =
+      activeCycle.release.builds.find((b) => b.isCurrent) ?? activeCycle.release.builds[0] ?? null;
+
+    const cases = await prisma.testCycleCase.findMany({
+      where: { testCycleId: activeCycle.id, testCase: { automationAvailable: true } },
+      include: {
+        testCase: true,
+        assignment: true,
+        executions: { orderBy: { createdAt: "desc" }, take: 1, include: { evidence: true } },
+      },
+    });
+
+    res.json({ activeCycle, currentBuild, automatedCases: cases });
+  }),
+);
+
+apiRouter.get(
+  "/projects/:projectId/testing-context",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    await authProject(req, projectId);
+
+    const activeCycle = await prisma.testCycle.findFirst({
+      where: { projectId, status: "ACTIVE" },
+      include: { release: { include: { builds: true } } },
+    });
+    const environments = await prisma.environment.findMany({ where: { projectId } });
+    const testCases = await prisma.testCase.findMany({
+      where: { projectId, archived: false },
+      select: { id: true, externalId: true, title: true },
+      orderBy: { externalId: "asc" },
+    });
+
+    const currentBuild = activeCycle
+      ? (activeCycle.release.builds.find((b) => b.isCurrent) ?? activeCycle.release.builds[0] ?? null)
+      : null;
+
+    res.json({ activeCycle, currentBuild, environments, testCases });
+  }),
+);
+
+apiRouter.post(
+  "/projects/:projectId/switch-rooms",
+  asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const auth = await requireUser(req);
+    await requireProjectRole(auth.userId, projectId, ["ADMINISTRATOR", "QA_LEAD"]);
+
+    const body = z
+      .object({
+        roomId: z.string().min(1),
+        roomName: z.string().min(1),
+        bridgeBaseUrl: z.string().url(),
+      })
+      .parse(req.body);
+
+    const room = await prisma.switchRoomLink.upsert({
+      where: { projectId_roomId: { projectId, roomId: body.roomId } },
+      create: {
+        projectId,
+        roomId: body.roomId,
+        roomName: body.roomName,
+        bridgeBaseUrl: body.bridgeBaseUrl,
+      },
+      update: {
+        roomName: body.roomName,
+        bridgeBaseUrl: body.bridgeBaseUrl,
+      },
+    });
+
+    res.status(201).json({ room });
   }),
 );
 
@@ -241,6 +341,10 @@ apiRouter.post(
     if (!auth) throw new ForbiddenError();
 
     const body = z.object({ expectedLockVersion: z.number().optional() }).parse(req.body ?? {});
+    if (auth.agentId) {
+      const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+      if (agent) assertAgentCapability(agent, "claimTests");
+    }
     const assignment = await claimAssignment({
       assignmentId: req.params.assignmentId,
       userId: auth.agentId ? undefined : auth.userId,
@@ -298,6 +402,21 @@ apiRouter.post(
     });
     if (!cycleCase) throw new NotFoundError();
 
+    if (auth.userId) {
+      await requireProjectRole(auth.userId, cycleCase.testCycle.projectId, [
+        "QA_ENGINEER",
+        "QA_LEAD",
+        "DEVELOPER",
+        "ADMINISTRATOR",
+      ]);
+    } else if (auth.agentId) {
+      const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+      if (!agent || agent.projectId !== cycleCase.testCycle.projectId) {
+        throw new ForbiddenError("Agent project mismatch");
+      }
+      assertAgentCapability(agent, "recordResults");
+    }
+
     const execution = await prisma.testExecution.create({
       data: {
         testCycleCaseId: body.cycleCaseId,
@@ -343,6 +462,12 @@ apiRouter.post(
         environmentId: z.string().optional(),
       })
       .parse(req.body);
+
+    if (auth.agentId) {
+      const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+      if (!agent) throw new NotFoundError();
+      assertAgentCapability(agent, "runAutomation");
+    }
 
     const result = await runAutomatedTest({
       ...body,
@@ -709,6 +834,11 @@ apiRouter.post(
       .parse(req.body);
 
     const apiKey = generateAgentApiKey();
+    const capsInput = body.capabilities as Record<string, unknown>;
+    const capabilities = (
+      Object.keys(capsInput).length > 0 ? capsInput : defaultCapabilities(body.agentType)
+    ) as Prisma.InputJsonValue;
+
     const agent = await prisma.agentRegistration.create({
       data: {
         projectId,
@@ -720,7 +850,7 @@ apiRouter.post(
         switchRoomId: body.switchRoomId,
         apiKeyHash: hashAgentKey(apiKey),
         apiKeyPrefix: apiKey.slice(0, 10),
-        capabilities: body.capabilities as Prisma.InputJsonValue,
+        capabilities,
       },
     });
 
@@ -778,6 +908,8 @@ apiRouter.post(
     }
 
     if (auth.agentId) {
+      const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+      if (agent) assertAgentCapability(agent, "coordinationScan");
       await prisma.agentActivity.create({
         data: {
           agentId: auth.agentId,
@@ -834,6 +966,7 @@ agentToolsRouter.get(
     const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
     const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
     if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readQueue");
 
     const cycle = await prisma.testCycle.findFirst({
       where: { projectId: agent.projectId, status: "ACTIVE" },
@@ -851,6 +984,7 @@ agentToolsRouter.get(
     const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
     const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
     if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "readDesignDecisions");
 
     const testCaseExternalId = typeof req.query.testCaseExternalId === "string" ? req.query.testCaseExternalId : undefined;
 
@@ -873,6 +1007,9 @@ agentToolsRouter.post(
   asyncHandler(async (req, res) => {
     const auth = (req as Request & { agentAuth: { agentId: string } }).agentAuth;
     const body = z.object({ assignmentId: z.string() }).parse(req.body);
+    const agent = await prisma.agentRegistration.findUnique({ where: { id: auth.agentId } });
+    if (!agent) throw new NotFoundError();
+    assertAgentCapability(agent, "claimTests");
     const assignment = await claimAssignment({ assignmentId: body.assignmentId, agentId: auth.agentId });
     res.json({ assignment });
   }),

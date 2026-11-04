@@ -13,6 +13,7 @@ import {
   ExecutionPage,
   ReleaseReadinessPage,
 } from "./pages/DomainPages";
+import { AdminPage } from "./pages/AdminPage";
 import { useAuthStore } from "./stores/auth";
 import { useEffect } from "react";
 import { api, getToken } from "./lib/api";
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="execution" element={<ExecutionPage />} />
         <Route path="defects" element={<DefectsPage />} />
         <Route path="agents" element={<AgentsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="release-readiness" element={<ReleaseReadinessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />

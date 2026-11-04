@@ -12,6 +12,7 @@ import { authRouter } from "./routes/auth.js";
 import { apiRouter, agentToolsRouter } from "./routes/api.js";
 import { realtimeHub } from "./ws/hub.js";
 import { verifyToken } from "./lib/auth.js";
+import { userCanAccessProject } from "./lib/projectAccess.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
@@ -50,15 +51,26 @@ wss.on("connection", (ws, req) => {
   const client = realtimeHub.addClient(ws, userId);
 
   ws.on("message", (raw) => {
-    try {
-      const msg = JSON.parse(raw.toString()) as { type: string; projectId?: string };
-      if (msg.type === "subscribe" && msg.projectId) {
-        realtimeHub.subscribe(client, msg.projectId);
-        ws.send(JSON.stringify({ type: "subscribed", projectId: msg.projectId }));
+    void (async () => {
+      try {
+        const msg = JSON.parse(raw.toString()) as { type: string; projectId?: string };
+        if (msg.type === "subscribe" && msg.projectId) {
+          if (!userId) {
+            ws.send(JSON.stringify({ type: "error", message: "Authentication required" }));
+            return;
+          }
+          const allowed = await userCanAccessProject(userId, msg.projectId);
+          if (!allowed) {
+            ws.send(JSON.stringify({ type: "error", message: "Project access denied" }));
+            return;
+          }
+          realtimeHub.subscribe(client, msg.projectId);
+          ws.send(JSON.stringify({ type: "subscribed", projectId: msg.projectId }));
+        }
+      } catch {
+        /* ignore malformed */
       }
-    } catch {
-      /* ignore malformed */
-    }
+    })();
   });
 
   ws.send(JSON.stringify({ type: "connected" }));

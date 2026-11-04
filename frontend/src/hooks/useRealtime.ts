@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getToken } from "../lib/api";
+import { invalidateProjectQueries } from "./useTestingContext";
 
 export function useRealtime(projectId?: string | null) {
   const qc = useQueryClient();
@@ -19,11 +20,8 @@ export function useRealtime(projectId?: string | null) {
     };
 
     ws.onmessage = () => {
-      qc.invalidateQueries({ queryKey: ["dashboard", projectId] });
-      qc.invalidateQueries({ queryKey: ["team-board", projectId] });
-      qc.invalidateQueries({ queryKey: ["my-workspace", projectId] });
-      qc.invalidateQueries({ queryKey: ["test-cases", projectId] });
-      qc.invalidateQueries({ queryKey: ["defects", projectId] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      invalidateProjectQueries(qc, projectId);
     };
 
     return () => ws.close();

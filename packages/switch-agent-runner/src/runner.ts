@@ -1,13 +1,5 @@
 /**
- * Minimal Switch agent bridge client.
- * Connects to Switch agent WebSocket and reacts to addressed messages by calling AgentQA MCP-equivalent REST tools.
- *
- * Requires env:
- * - SWITCH_BRIDGE_BASE_URL
- * - SWITCH_AGENT_ID
- * - SWITCH_AGENT_API_KEY
- * - AGENTQA_AGENT_API_KEY
- * - AGENTQA_API_URL
+ * Switch agent bridge client for AgentQA Network.
  */
 import WebSocket from "ws";
 import crypto from "crypto";
@@ -42,11 +34,65 @@ function wsUrl(roomIds: string[]) {
   return `${bridge.replace(/^http/, "ws")}/agents/${agentId}/connection/ws?connection_id=${connectionId}&rooms=${encodeURIComponent(rooms)}`;
 }
 
+function formatQueue(body: string) {
+  try {
+    const data = JSON.parse(body) as {
+      queue?: Array<{ testCase: { externalId: string; title: string }; assignment?: { status: string } }>;
+    };
+    const lines = (data.queue ?? []).slice(0, 8).map((item, i) => {
+      const status = item.assignment?.status ?? "AVAILABLE";
+      return `${i + 1}. ${item.testCase.externalId} (${status}) — ${item.testCase.title}`;
+    });
+    return `AgentQA prioritized queue:\n${lines.join("\n") || "No items"}`;
+  } catch {
+    return `AgentQA queue:\n${body.slice(0, 3500)}`;
+  }
+}
+
 async function handleAddressedMessage(content: string) {
+  const trimmed = content.trim();
+  const cmdMatch = trimmed.match(/^@agentqa\s+(\w+)(?:\s+(\S+))?/i);
+  if (cmdMatch) {
+    const cmd = cmdMatch[1].toLowerCase();
+    const arg = cmdMatch[2];
+    if (cmd === "queue") {
+      const r = await agentqa("/api/agent-tools/test-queue");
+      await postSwitchMessage(formatQueue(r.body));
+      return;
+    }
+    if (cmd === "claim" && arg) {
+      const r = await agentqa("/api/agent-tools/claim", {
+        method: "POST",
+        body: JSON.stringify({ assignmentId: arg }),
+      });
+      await postSwitchMessage(`Claim result:\n${r.body.slice(0, 2000)}`);
+      return;
+    }
+    if (cmd === "scan") {
+      const q = await agentqa("/api/agent-tools/test-queue");
+      const parsed = JSON.parse(q.body) as { projectId?: string };
+      if (parsed.projectId) {
+        const r = await agentqa(`/api/projects/${parsed.projectId}/coordination/scan`, {
+          method: "POST",
+          body: "{}",
+        });
+        await postSwitchMessage(`Coordination scan:\n${r.body.slice(0, 2000)}`);
+      }
+      return;
+    }
+    if (cmd === "design" && arg) {
+      const r = await agentqa(
+        `/api/agent-tools/design-decisions?testCaseExternalId=${encodeURIComponent(arg)}`,
+      );
+      await postSwitchMessage(`Design decisions for ${arg}:\n${r.body.slice(0, 2500)}`);
+      return;
+    }
+  }
+
   const lower = content.toLowerCase();
   if (lower.includes("queue") || lower.includes("priority")) {
     const r = await agentqa("/api/agent-tools/test-queue");
-    await postSwitchMessage(`AgentQA queue:\n${r.body.slice(0, 3500)}`);
+    await postSwitchMessage(formatQueue(r.body));
   } else if (lower.includes("coordination") || lower.includes("critical")) {
     const q = await agentqa("/api/agent-tools/test-queue");
     const parsed = JSON.parse(q.body) as { projectId?: string };
