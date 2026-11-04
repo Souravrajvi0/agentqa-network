@@ -31,21 +31,21 @@ export function NotificationBell() {
   return (
     <div className="relative mb-4">
       <details className="group">
-        <summary className="cursor-pointer list-none rounded-sm border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] text-zinc-400 transition duration-150 hover:border-white/[0.12]">
+        <summary className="cursor-pointer list-none rounded-sm border-theme bg-[var(--bg-hover)] px-3 py-2 text-[13px] text-label transition duration-150 hover:border-[var(--border-strong)]">
           Notifications
           {unread.length ? (
-            <span className="chip ml-2 border-white/15 text-zinc-200">{unread.length}</span>
+            <span className="chip ml-2 text-heading">{unread.length}</span>
           ) : null}
         </summary>
-        <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-sm border border-white/[0.08] bg-[#0f0f11] p-1.5 shadow-glow">
+        <div className="absolute z-20 mt-2 max-h-80 w-72 overflow-auto rounded-sm border-theme bg-panel p-1.5 shadow-glow">
           {(data?.notifications ?? []).length === 0 ? (
             <p className="p-2 text-xs text-zinc-500">No notifications yet</p>
           ) : (
             <ul className="space-y-2">
               {(data?.notifications ?? []).map((n) => (
-                <li key={n.id} className="rounded-sm border border-white/[0.05] p-2.5 text-[11px]">
-                  <p className="font-medium text-zinc-100">{n.title}</p>
-                  <p className="text-zinc-500">{n.body}</p>
+                <li key={n.id} className="rounded-sm border p-2.5 text-[11px]" style={{ borderColor: "var(--border-faint)" }}>
+                  <p className="font-medium text-heading">{n.title}</p>
+                  <p className="text-label">{n.body}</p>
                   <div className="mt-2 flex gap-2">
                     {n.linkPath && projectId ? (
                       <Link
@@ -57,7 +57,7 @@ export function NotificationBell() {
                       </Link>
                     ) : null}
                     {!n.read ? (
-                      <button className="text-zinc-500 hover:text-zinc-200" onClick={() => markRead.mutate(n.id)}>
+                      <button className="text-label hover:text-heading" onClick={() => markRead.mutate(n.id)}>
                         Mark read
                       </button>
                     ) : null}

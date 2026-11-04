@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/auth";
 import { useRealtime } from "../hooks/useRealtime";
 import { NotificationBell } from "./NotificationBell";
 import { CommandPalette, CommandTrigger, PresenceStack } from "./CommandPalette";
+import { ThemeToggle } from "./ThemeToggle";
 import clsx from "clsx";
 import { api } from "../lib/api";
 import { useState } from "react";
@@ -57,7 +58,7 @@ export function AppLayout() {
   const switchLinked = (agentsData?.rooms?.length ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-[#09090b]">
+    <div className="min-h-screen bg-canvas">
       <CommandPalette projectId={selectedProjectId} open={paletteOpen} onOpenChange={setPaletteOpen} />
       <header className="shell-header">
         <div className="flex h-12 items-center gap-3 px-4 lg:px-6">
@@ -65,20 +66,18 @@ export function AppLayout() {
             ☰
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-white/20 bg-white text-[9px] font-bold tracking-tight text-[#09090b]">
-              AQ
-            </div>
+            <div className="logo-mark h-7 w-7">AQ</div>
             <div className="hidden sm:block">
-              <p className="text-[13px] font-semibold leading-none tracking-tight text-zinc-100">AgentQA Network</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-600">Switch orchestration</p>
+              <p className="text-[13px] font-semibold leading-none tracking-tight text-heading">AgentQA Network</p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-wider text-faint">Switch orchestration</p>
             </div>
           </div>
 
-          <div className="mx-2 hidden h-6 w-px bg-zinc-700 md:block" />
+          <div className="mx-2 hidden h-6 w-px md:block" style={{ backgroundColor: "var(--border-subtle)" }} />
 
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <select
-              className="h-8 max-w-[140px] truncate rounded-sm border border-white/[0.08] bg-[#0a0a0c] px-2 text-[11px] text-zinc-400 outline-none focus:border-white/20 sm:max-w-[200px]"
+              className="input h-8 max-w-[140px] truncate py-0 text-[11px] text-label sm:max-w-[200px]"
               value={selectedProjectId ?? ""}
               onChange={(e) => {
                 setSelectedProjectId(e.target.value);
@@ -103,7 +102,7 @@ export function AppLayout() {
               <span
                 className={clsx(
                   "chip gap-1.5 normal-case tracking-normal",
-                  switchLinked ? "border-emerald-500/25 text-emerald-200/90" : "text-zinc-600",
+                  switchLinked ? "border-emerald-500/25 text-emerald-700 dark:text-emerald-200/90" : "text-faint",
                 )}
               >
                 <span className={clsx("h-1 w-1 rounded-sm", switchLinked ? "bg-emerald-400" : "bg-zinc-600")} />
@@ -111,10 +110,11 @@ export function AppLayout() {
               </span>
               <PresenceStack agents={agentsData?.agents ?? []} />
             </div>
+            <ThemeToggle />
             <button type="button" className="btn-primary hidden sm:inline-flex" onClick={() => selectedProjectId && navigate(`/projects/${selectedProjectId}/execution`)}>
               Run tests
             </button>
-            <span className="hidden text-xs text-zinc-400 xl:inline">{user?.name}</span>
+            <span className="hidden text-xs text-label xl:inline">{user?.name}</span>
           </div>
         </div>
       </header>
@@ -122,9 +122,10 @@ export function AppLayout() {
       <div className="lg:grid lg:grid-cols-[248px_1fr]">
         <aside
           className={clsx(
-            "border-b border-white/[0.06] bg-[#0a0a0c] p-3 lg:border-b-0 lg:border-r lg:border-white/[0.06]",
+            "border-b bg-sidebar p-3 lg:border-b-0 lg:border-r",
             sidebarOpen ? "block" : "hidden lg:block",
           )}
+          style={{ borderColor: "var(--divider)" }}
         >
           <NotificationBell />
           <nav className="space-y-0.5">

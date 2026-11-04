@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
@@ -26,7 +27,7 @@ export default {
         human: "#d4d4d8",
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(255,255,255,0.07), 0 20px 50px rgba(0,0,0,0.5)",
+        glow: "0 0 0 1px var(--glow-ring), 0 20px 50px var(--glow-shadow)",
       },
       animation: {
         pulseStripe: "pulseStripe 2s ease-in-out infinite",
