@@ -1,0 +1,62 @@
+[
+  {
+    "id": "VOL-DRF-001",
+    "title": "DRF preemptable simulates allocation with in-place Sub before victim decision",
+    "status": "confirmed",
+    "class": "B",
+    "locations": ["pkg/scheduler/plugins/drf/drf.go:248-255"],
+    "confidence": "high"
+  },
+  {
+    "id": "VOL-CAP-001",
+    "title": "Capacity UnifiedEvictable gang reclaim missing nil job guard",
+    "status": "confirmed",
+    "class": "A",
+    "locations": ["pkg/scheduler/plugins/capacity/capacity.go:630-632"],
+    "confidence": "high"
+  },
+  {
+    "id": "VOL-RES-001",
+    "title": "LessEqualWithDimensionAndResourcesName returns true when lhs has nil ScalarResources but req requests scalars",
+    "status": "confirmed",
+    "class": "A",
+    "locations": ["pkg/scheduler/api/resource_info.go:501-507"],
+    "confidence": "medium"
+  },
+  {
+    "id": "VOL-STMT-001",
+    "title": "RecoverOperations partial failure without Discard",
+    "status": "duplicate",
+    "class": "B",
+    "locations": ["pkg/scheduler/framework/statement.go:459-483", "actions/allocate/allocate.go:558", "actions/gangpreempt/gangpreempt.go:180"],
+    "confidence": "high",
+    "github": ["https://github.com/volcano-sh/volcano/issues/5362", "https://github.com/volcano-sh/volcano/issues/5684"]
+  },
+  {
+    "id": "VOL-PROP-001",
+    "title": "Proportion OverusedFn all-dimension LessEqual vs max share",
+    "status": "duplicate",
+    "class": "B",
+    "locations": ["pkg/scheduler/plugins/proportion/proportion.go:326-337"],
+    "confidence": "high",
+    "github": ["https://github.com/volcano-sh/volcano/issues/3695"]
+  },
+  {
+    "id": "VOL-GANG-001",
+    "title": "gangpreempt continues after RecoverOperations error without stmt.Discard",
+    "status": "duplicate_extension",
+    "class": "B",
+    "locations": ["pkg/scheduler/actions/gangpreempt/gangpreempt.go:160-183"],
+    "confidence": "high",
+    "github": ["https://github.com/volcano-sh/volcano/issues/5362"]
+  },
+  {
+    "id": "VOL-FS-001",
+    "title": "fairshare stale prometheus gauges",
+    "status": "duplicate",
+    "class": "A",
+    "locations": ["pkg/scheduler/plugins/fairshare/fairshare.go"],
+    "confidence": "high",
+    "github": ["https://github.com/volcano-sh/volcano/issues/6023"]
+  }
+]
