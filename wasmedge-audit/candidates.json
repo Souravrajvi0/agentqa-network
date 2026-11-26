@@ -1,0 +1,137 @@
+{
+  "repo": "WasmEdge/WasmEdge",
+  "commit": "e0ba07fd56fe0c7a022ca884882d394c96052597",
+  "audit_date": "2026-11-26",
+  "findings": [
+    {
+      "id": "WE-1",
+      "status": "confirmed",
+      "category": "A",
+      "title": "Interpreter memory.atomic.fence uses memory_order_release instead of seq_cst",
+      "severity": "medium",
+      "confidence": "high",
+      "modes": ["interpreter"],
+      "aot_match": false,
+      "locations": [
+        "lib/executor/engine/threadInstr.cpp:40-42",
+        "lib/llvm/compiler/threadInstr.cpp:356-357"
+      ],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-2",
+      "status": "confirmed",
+      "category": "A",
+      "title": "Environ::pathLink re-checks OldNode instead of NewNode",
+      "severity": "low",
+      "confidence": "high",
+      "modes": ["wasi"],
+      "masked_by": "VINode::pathLink null New -> BADF",
+      "locations": ["include/host/wasi/environ.h:699-701"],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-3",
+      "status": "confirmed",
+      "category": "A",
+      "title": "WASI random_get uses Hash::RandEngine rather than OS CSPRNG",
+      "severity": "medium",
+      "confidence": "high",
+      "modes": ["wasi"],
+      "locations": [
+        "include/host/wasi/environ.h:946-956",
+        "include/common/hash.h:41-58"
+      ],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-4",
+      "status": "confirmed",
+      "category": "A",
+      "title": "fromErrNo default assumingUnreachable; EOPNOTSUPP missing when distinct from ENOTSUP",
+      "severity": "medium",
+      "confidence": "high",
+      "modes": ["wasi-macos"],
+      "linux_alias": "ENOTSUP==EOPNOTSUPP (verified locally)",
+      "locations": [
+        "lib/host/wasi/macos.h:154-191",
+        "lib/host/wasi/linux.h:181-218"
+      ],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-5",
+      "status": "confirmed",
+      "category": "A",
+      "title": "Environ::init / InitWASI does not fini FdMap; second init keeps old fds",
+      "severity": "medium",
+      "confidence": "high",
+      "modes": ["wasi", "c-api"],
+      "locations": [
+        "lib/host/wasi/environ.cpp:109-155",
+        "lib/api/wasmedge.cpp:2374-2410"
+      ],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-6",
+      "status": "confirmed",
+      "category": "A",
+      "title": "initWithFds leaves stdin mapped if stdout/stderr fromFd fails",
+      "severity": "low",
+      "confidence": "high",
+      "modes": ["wasi", "c-api"],
+      "locations": ["lib/host/wasi/environ.cpp:161-178"],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-7",
+      "status": "confirmed",
+      "category": "A",
+      "title": "fd_renumber erases destination without Environ::close poller cleanup",
+      "severity": "low",
+      "confidence": "medium-high",
+      "modes": ["wasi-linux"],
+      "locations": [
+        "include/host/wasi/environ.h:521-534",
+        "include/host/wasi/environ.h:262-270",
+        "lib/host/wasi/inode-linux.cpp:1740-1749",
+        "lib/host/wasi/inode-macos.cpp:1519"
+      ],
+      "upstream": "unreported (3040 was same-fd SIGSEGV only)"
+    },
+    {
+      "id": "WE-8",
+      "status": "confirmed",
+      "category": "B",
+      "title": "MemoryInstance allocation failure zeros pages but instantiate succeeds",
+      "severity": "medium",
+      "confidence": "high",
+      "modes": ["interpreter", "aot", "jit"],
+      "locations": [
+        "include/runtime/instance/memory.h:73-77",
+        "lib/executor/instantiate/memory.cpp:31-44",
+        "lib/executor/instantiate/table.cpp:59-64"
+      ],
+      "upstream": "unreported"
+    },
+    {
+      "id": "WE-DUP-5537",
+      "status": "already_reported",
+      "category": "C",
+      "title": "recycleModule keeps one FailedMod; second failure UAF via imported table",
+      "upstream": "https://github.com/WasmEdge/WasmEdge/issues/5537",
+      "locations": ["include/runtime/storemgr.h:152-173"]
+    }
+  ],
+  "rejected": [
+    "f32.eq +0/-0",
+    "fmin NaN returns other operand",
+    "narrow atomic sizeof(T) OOB",
+    "empty expr on core wasm load",
+    "Linux EOPNOTSUPP alias",
+    "fd_sync directory BADF (tested as required)",
+    "StopToken relaxed as hard bug",
+    "clock_time_get precision"
+  ]
+}
