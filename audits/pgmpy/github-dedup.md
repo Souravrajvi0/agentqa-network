@@ -1,6 +1,8 @@
 # GitHub dedup
 
-Searched `repo:pgmpy/pgmpy` issues (open/closed) for copy, do, TabularCPD, Adjustment.validate, FunctionalBayesianNetwork, SHD, Frontdoor.
+Searched `repo:pgmpy/pgmpy` issues (open/closed) for copy, do, TabularCPD, Adjustment.validate, FunctionalBayesianNetwork, SHD, Frontdoor, LinearGaussianCPD, beta, check_model.
+
+Beta-length vs `check_model`: no issue reports `check_model()` returning True on a short/long `beta`. Closed [#3118](https://github.com/pgmpy/pgmpy/issues/3118) mentions beta length only as a notebook-docs checklist item.
 
 | Finding | Upstream |
 |---|---|
@@ -11,4 +13,4 @@ Searched `repo:pgmpy/pgmpy` issues (open/closed) for copy, do, TabularCPD, Adjus
 | FunctionalBN.copy | **No matching issue** |
 | Frontdoor first-pair only | **No matching issue** |
 | LGBN beta length vs check_model | **No matching issue** |
-| SHD node sets | Closed [#2094](https://github.com/pgmpy/pgmpy/issues/2094); current `dev` raises `ValueError` on unequal node sets |
+| SHD node sets | Closed [#2094](https://github.com/pgmpy/pgmpy/issues/2094); `reproductions/test_shd_unequal_nodes.py` — `ValueError` on unequal node sets |

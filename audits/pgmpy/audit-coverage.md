@@ -9,7 +9,7 @@
 | Functional BN copy | `models/FunctionalBayesianNetwork.py`, `factors/hybrid/FunctionalCPD.py` | Static inherit | PGMPY-FBN-001 (not live-executed) |
 | ID algorithm | `identification/ID.py` | Read | No new bug proven |
 | Frontdoor | `identification/frontdoor.py` | Read | PGMPY-FD-001: only first exposure/outcome |
-| SHD | `metrics/shd.py` | Repro | Different node sets raise; #2094 closed |
+| SHD | `metrics/shd.py` | Repro (`test_shd_unequal_nodes.py`) | Unequal node sets raise `ValueError`; #2094 closed |
 | VE / BP MAP | `inference/ExactInference.py` | Read | Joint argmax, not max-marginals |
 | DBN query vs sampling | tests TODO | Known in-tree | Not re-filed |
 | SEM IV | `tests/test_inference/test_CausalInference.py` TODO | Not re-validated | Deferred (unvalidated) |
