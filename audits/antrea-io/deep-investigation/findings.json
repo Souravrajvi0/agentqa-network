@@ -1,0 +1,96 @@
+{
+  "audit_metadata": {
+    "repository": "https://github.com/antrea-io/antrea",
+    "commit_sha": "3aca3e73e6d5461146b748eb7e5a31c4b7576ee3",
+    "branch": "main",
+    "audit_date": "2026-11-26",
+    "investigator_role": "read-only correctness audit",
+    "upstream_modified": false
+  },
+  "findings": [
+    {
+      "bug_id": "ANTREA-IPAM-001",
+      "title": "IPPool start/end range allocates subnet gateway; CIDR path reserves it",
+      "subsystem": "IPAM / poolallocator",
+      "status": "validated",
+      "category": "A",
+      "confidence": "high",
+      "deduplication_status": "previously_unreported_candidate",
+      "related_github": [
+        "Issue #7868 (ExternalIPPool CIDR gateway — different CRD)",
+        "PR #8531 (ExternalIPPool CIDR gateway fix — partial overlap)"
+      ],
+      "files": [
+        {
+          "path": "pkg/ipam/poolallocator/allocator.go",
+          "lines": "127-152",
+          "functions": ["initIPAllocators"]
+        }
+      ],
+      "expected_behavior": "Gateway IP from IPPool.spec.subnetInfo is not assignable to workloads; docs/antrea-ipam.md treats gateway as non-allocatable for start/end ranges.",
+      "actual_behavior": "First AllocateNext from a start/end range can return the gateway address (e.g. 10.2.2.1 when gateway is 10.2.2.1 and range includes it).",
+      "root_cause": "CIDR branch passes reservedIPs including gateway; start/end branch calls NewIPRangeAllocator without reserving subnetInfo.gateway.",
+      "user_impact": "Pod receives default gateway as its address → broken routing, duplicate IP risk, inconsistent with CIDR-based pools on same cluster.",
+      "reachable_in_supported_config": true,
+      "regression_test": {
+        "name": "TestAllocateNextSkipsGatewayInIPRange",
+        "package": "antrea.io/antrea/v2/pkg/ipam/poolallocator",
+        "location": "reproductions/ippool-gateway-in-range/allocator_test_snippet.go",
+        "result": "FAIL",
+        "output_excerpt": "expected gateway 10.2.2.2 (test used range where first allocatable after bug is .2); actual 10.2.2.1 — Messages: gateway must not be allocated from an IP range"
+      },
+      "implementation_complexity": "low",
+      "suggested_fix": "Reserve gateway (and broadcast when applicable) for start/end ranges mirroring CIDR init, or reject ranges that include gateway."
+    },
+    {
+      "bug_id": "ANTREA-IPAM-002",
+      "title": "SecondaryNetworkAllocate assigns multiple IPv4 addresses from multiple IPv4 pools",
+      "subsystem": "Agent CNI IPAM / secondary networks",
+      "status": "validated",
+      "category": "B",
+      "confidence": "high",
+      "deduplication_status": "previously_unreported_candidate",
+      "related_github": [
+        "Issue #7722 (secondary IPv6 feature — not this bug)"
+      ],
+      "files": [
+        {
+          "path": "pkg/agent/cniserver/ipam/antrea_ipam.go",
+          "lines": "372-419",
+          "functions": ["SecondaryNetworkAllocate"]
+        },
+        {
+          "path": "pkg/agent/cniserver/ipam/antrea_ipam.go",
+          "lines": "206-272",
+          "functions": ["Add"],
+          "note": "Reference correct one-per-family behavior"
+        }
+      ],
+      "expected_behavior": "At most one IPv4 and one IPv6 per secondary interface, matching primary Add() and multiv4-1 test expectations.",
+      "actual_behavior": "Loop allocates from every pool in ipamConf.IPPools; sets allocatedIPv4 but never continues to skip further IPv4 pools.",
+      "root_cause": "Missing `if allocatedIPv4 { continue }` / `if allocatedIPv6 { continue }` and break when both families satisfied.",
+      "user_impact": "Secondary NAD listing two IPv4 pools can attach two IPv4s to one interface — ambiguous L3 config, extra IPPool consumption, possible policy/route confusion.",
+      "reachable_in_supported_config": true,
+      "regression_test": {
+        "name": "TestSecondaryNetworkAllocateAtMostOneIPPerFamily",
+        "package": "antrea.io/antrea/v2/pkg/agent/cniserver/ipam",
+        "location": "reproductions/secondary-ipam-same-family/antrea_ipam_test_snippet.go",
+        "result": "FAIL",
+        "output_excerpt": "Two IPv4 addresses returned from multiv4-pool-a and multiv4-pool-b"
+      },
+      "implementation_complexity": "low-medium",
+      "suggested_fix": "Mirror Add() loop control flow; add table test analogous to multiv4-1 for SecondaryNetworkAllocate."
+    },
+    {
+      "bug_id": "ANTREA-IPAM-CAND-001",
+      "title": "Overlapping IPPool ranges without validation",
+      "subsystem": "Controller IPAM validation",
+      "status": "candidate",
+      "category": "C",
+      "confidence": "medium",
+      "deduplication_status": "known_unresolved_issue",
+      "related_github": ["Issue #7306 (closed not_planned)"],
+      "note": "Not counted as new finding; tracked for mentorship scope."
+    }
+  ]
+}

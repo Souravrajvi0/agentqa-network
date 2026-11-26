@@ -14,6 +14,7 @@ Investigation only. No patches were pushed to `antrea-io/antrea`.
 | Dedup | [github-dedup.md](github-dedup.md) |
 | Repros | [reproductions/](reproductions/) |
 | Roadmap | [contribution-roadmap.md](contribution-roadmap.md) |
+| **Deep investigation (Phases 1–10)** | [deep-investigation/](deep-investigation/) — `overview.md`, `findings.json`, `validated_bugs.md`, etc. |
 
 Confirmed (high confidence):
 
