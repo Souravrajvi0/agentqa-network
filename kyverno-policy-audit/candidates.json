@@ -1,0 +1,76 @@
+[
+  {
+    "id": "BUG-001",
+    "title": "Background scan applies all NamespacedValidatingPolicies to cluster-scoped resources",
+    "status": "confirmed",
+    "classification": "B",
+    "confidence": "high",
+    "novelty": "apparently_novel",
+    "component": "pkg/controllers/report/background",
+    "symptoms": "Foreign-tenant namespaced CEL policies appear in ClusterEphemeralReport / aggregated policy reports for cluster-scoped objects"
+  },
+  {
+    "id": "CAND-002",
+    "title": "CLI apply evaluates namespaced policies against resources in other namespaces",
+    "status": "rejected_known",
+    "classification": "A",
+    "confidence": "high",
+    "novelty": "known",
+    "github": ["https://github.com/kyverno/kyverno/issues/17830", "https://github.com/kyverno/kyverno/pull/17831"]
+  },
+  {
+    "id": "CAND-003",
+    "title": "Background scan hard-codes admission operation CREATE",
+    "status": "rejected_known",
+    "classification": "B",
+    "confidence": "medium",
+    "novelty": "known_partial",
+    "github": ["https://github.com/kyverno/kyverno/issues/18436", "https://github.com/kyverno/kyverno/issues/18442"],
+    "note": "VAP path documented; CEL scanner shares the same pattern in scanner.go"
+  },
+  {
+    "id": "CAND-004",
+    "title": "Partial background rescan retains stale policy results (keepResult)",
+    "status": "rejected_known",
+    "classification": "B",
+    "confidence": "high",
+    "novelty": "known",
+    "github": ["https://github.com/kyverno/kyverno/issues/17368", "https://github.com/kyverno/kyverno/issues/17405"]
+  },
+  {
+    "id": "CAND-005",
+    "title": "Matcher ignores equivalent API group resources (extensions vs apps)",
+    "status": "rejected_known",
+    "classification": "C",
+    "confidence": "high",
+    "novelty": "known",
+    "github": ["https://github.com/kyverno/kyverno/issues/18425"]
+  },
+  {
+    "id": "CAND-006",
+    "title": "CLI UPDATE simulation sets oldObject equal to object",
+    "status": "rejected_by_design",
+    "classification": "A",
+    "confidence": "high",
+    "novelty": "documented_limitation",
+    "evidence": "cmd/cli/kubectl-kyverno/processor/operation.go AdmissionRequestShape documents single-resource UPDATE"
+  },
+  {
+    "id": "CAND-007",
+    "title": "Cluster-scoped resources always match namespaceSelector",
+    "status": "rejected_by_design",
+    "classification": "C",
+    "confidence": "high",
+    "novelty": "upstream_semantics",
+    "evidence": "pkg/cel/matching/predicates/namespace/matcher.go copies Kubernetes admission webhook behavior"
+  },
+  {
+    "id": "CAND-008",
+    "title": "Policy report label collision (cluster vs namespaced policy same name)",
+    "status": "rejected_unverified",
+    "classification": "B",
+    "confidence": "low",
+    "novelty": "unverified",
+    "note": "PolicyLabel uses name only; analogous to #17633; not reproduced in this audit"
+  }
+]

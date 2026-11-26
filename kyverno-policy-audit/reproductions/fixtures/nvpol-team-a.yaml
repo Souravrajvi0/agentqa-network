@@ -1,0 +1,24 @@
+apiVersion: policies.kyverno.io/v1beta1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: team-a-policy
+  namespace: team-a
+spec:
+  validationActions:
+    - Audit
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - operations:
+          - CREATE
+        apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        resources:
+          - namespaces
+  validations:
+    - expression: "false"
+      message: always fails
