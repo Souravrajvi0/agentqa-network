@@ -5,11 +5,12 @@
     {
       "id": "PGMPY-LGBN-001",
       "title": "LinearGaussianBayesianNetwork.do does not update CPDs; joint stays observational",
-      "status": "confirmed",
+      "status": "confirmed-duplicate",
       "class": "A",
       "confidence": "high",
       "component": "pgmpy/models/LinearGaussianBayesianNetwork.py",
-      "permanent": true
+      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/2714"],
+      "reproduction": "audits/pgmpy/reproductions/test_lgbn_do_observational_joint.py"
     },
     {
       "id": "PGMPY-LGBN-002",
@@ -17,7 +18,8 @@
       "status": "confirmed-duplicate",
       "class": "A",
       "confidence": "high",
-      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3746"]
+      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3746"],
+      "reproduction": "audits/pgmpy/reproductions/test_lgbn_copy_roles.py"
     },
     {
       "id": "PGMPY-CPD-001",
@@ -25,7 +27,8 @@
       "status": "confirmed-duplicate",
       "class": "B",
       "confidence": "high",
-      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3744"]
+      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3744"],
+      "reproduction": "audits/pgmpy/reproductions/test_tabularcpd_errors.py"
     },
     {
       "id": "PGMPY-ID-001",
@@ -33,27 +36,41 @@
       "status": "confirmed-duplicate",
       "class": "A",
       "confidence": "high",
-      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3553"]
+      "duplicateOf": ["https://github.com/pgmpy/pgmpy/issues/3553"],
+      "reproduction": "audits/pgmpy/reproductions/test_adjustment_validate_mediator.py"
     },
     {
       "id": "PGMPY-FBN-001",
       "title": "FunctionalBayesianNetwork.copy is DiscreteBayesianNetwork.copy (wrong type; FunctionalCPD has no copy)",
-      "status": "confirmed",
+      "status": "confirmed-static",
       "class": "B",
       "confidence": "high",
-      "component": "pgmpy/models/DiscreteBayesianNetwork.py copy + FunctionalCPD"
+      "component": "pgmpy/models/DiscreteBayesianNetwork.py copy + FunctionalCPD",
+      "reproduction": "audits/pgmpy/reproductions/test_functional_copy_contract.py",
+      "note": "Live fbn.copy() not executed (torch/pyro required for constructor)"
     },
     {
       "id": "PGMPY-LGBN-003",
       "title": "LinearGaussianCPD does not check len(beta)==len(evidence)+1; check_model still passes",
-      "status": "rejected",
-      "reason": "Crashes in to_joint_gaussian rather than returning a wrong distribution; validation gap, not a silent correctness error"
+      "status": "confirmed",
+      "class": "B",
+      "confidence": "high",
+      "component": "pgmpy/factors/continuous/LinearGaussianCPD.py",
+      "reproduction": "audits/pgmpy/reproductions/test_lgbn_beta_length.py"
+    },
+    {
+      "id": "PGMPY-FD-001",
+      "title": "Frontdoor._validate uses only the first exposure and first outcome",
+      "status": "confirmed-static",
+      "class": "B",
+      "confidence": "high",
+      "component": "pgmpy/identification/frontdoor.py"
     },
     {
       "id": "PGMPY-SHD-001",
       "title": "SHD with different node sets",
       "status": "rejected",
-      "reason": "Raises ValueError; prior #2094 fixed"
+      "reason": "Raises ValueError on current dev; prior #2094 closed"
     }
   ]
 }

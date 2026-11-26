@@ -31,7 +31,9 @@ def test_do_leaves_cpd_parents_and_observational_mean():
         assert "proper parents" in str(exc)
 
 
-def test_simulate_do_is_not_the_do_method():
+def test_simulate_do_pins_intervened_variable():
     model = _model()
     samples = model.simulate(n_samples=20, rng=0, do={"x2": 0.0})
     assert (samples["x2"] == 0.0).all()
+    # P(x3 | x2=0) = N(4, 3); sample mean should be near 4, not the observational 8.5.
+    assert abs(float(samples["x3"].mean()) - 4.0) < 1.5
