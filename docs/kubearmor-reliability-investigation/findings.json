@@ -1,0 +1,148 @@
+{
+  "repository": "kubearmor/KubeArmor",
+  "commit": "a95bfe7d1c3f1fe757d642cea96e26d569c3e07b",
+  "investigation_date": "2026-11-26",
+  "findings": [
+    {
+      "id": "KA-REL-001",
+      "title": "MatchExpIdentities returns true when only NotIn passes but In fails",
+      "component": "common",
+      "category": "A",
+      "files": [
+        {"path": "KubeArmor/common/common.go", "lines": "590-622"},
+        {"path": "KubeArmor/core/kubeUpdate.go", "lines": "1319-1333"}
+      ],
+      "expected_behavior": "For CSP/KSP selectors with both In and NotIn label expressions, a pod must match In and must not match NotIn.",
+      "actual_behavior": "After the In loop leaves matched=false, the NotIn loop sets matched=true on the last NonIdentity when no exclusion hit—even if In never matched.",
+      "root_cause": "NotIn-only success path does not gate on prior In match; CreateSecurityPolicy also drops NotIn when hasInOperator is already true.",
+      "evidence": "go test ./common -run TestMatchExpIdentities_InAndNotIn (temporary test on a95bfe7): FAIL not_in-set_and_not_excluded",
+      "user_impact": "Policies attach to wrong endpoints; controller-adjacent bookkeeping and telemetry attribute alerts to unintended workloads.",
+      "regression_test_status": "ready (see regression/match_exp_identities_test.go)",
+      "deduplication_status": "previously_unreported",
+      "confidence": "high",
+      "implementation_complexity": "low",
+      "contribution_category": "A"
+    },
+    {
+      "id": "KA-REL-002",
+      "title": "WgDaemon does not track real monitor/feeder worker goroutines",
+      "component": "core",
+      "category": "B",
+      "files": [
+        {"path": "KubeArmor/core/kubeArmor.go", "lines": "285-290,318-328,182-258"}
+      ],
+      "expected_behavior": "DestroyKubeArmorDaemon should wait until TraceSyscall, UpdateLogs, CleanUpExitedHostPids, and gRPC ServeLogFeeds workers exit before tearing down BPF/monitor resources.",
+      "actual_behavior": "Wrapper functions Add(1) then immediately Done() after spawning workers with go; WgDaemon.Wait returns while workers still run.",
+      "root_cause": "WaitGroup attached to short-lived wrapper, not workers.",
+      "evidence": "Static analysis; aligns with open issue #2652 on main.",
+      "user_impact": "Graceful shutdown / rollouts may race with BPF map teardown (reliability, not bypass).",
+      "regression_test_status": "not_run (needs integration or controllable shutdown hook)",
+      "deduplication_status": "known_unresolved",
+      "dedup_issue": "https://github.com/kubearmor/KubeArmor/issues/2652",
+      "confidence": "high",
+      "implementation_complexity": "medium",
+      "contribution_category": "B"
+    },
+    {
+      "id": "KA-REL-003",
+      "title": "monitor.StopChan is never closed on daemon shutdown",
+      "component": "monitor",
+      "category": "B",
+      "files": [
+        {"path": "KubeArmor/monitor/systemMonitor.go", "lines": "134-139"},
+        {"path": "KubeArmor/monitor/logUpdate.go", "lines": "146-149"},
+        {"path": "KubeArmor/core/kubeArmor.go", "lines": "183-184"}
+      ],
+      "expected_behavior": "UpdateLogs and TraceSyscall exit when daemon shuts down.",
+      "actual_behavior": "Only core.StopChan is closed; monitor.StopChan is a separate channel never closed—workers rely on perf buffer close side effects.",
+      "root_cause": "Dual global StopChan design; DestroySystemMonitor does not close monitor.StopChan.",
+      "evidence": "grep close(StopChan) — single hit in core only.",
+      "user_impact": "Workers may not exit promptly; couples with KA-REL-002.",
+      "regression_test_status": "not_run",
+      "deduplication_status": "related_to",
+      "dedup_issue": "https://github.com/kubearmor/KubeArmor/issues/2295",
+      "confidence": "high",
+      "implementation_complexity": "medium",
+      "contribution_category": "C"
+    },
+    {
+      "id": "KA-REL-004",
+      "title": "KubeArmorPolicy controller Reconcile is a no-op",
+      "component": "KubeArmorController",
+      "category": "A",
+      "files": [
+        {"path": "pkg/KubeArmorController/internal/controller/kubearmorpolicy_controller.go", "lines": "27-30"}
+      ],
+      "expected_behavior": "Controller updates policy CRD status or validation bookkeeping.",
+      "actual_behavior": "Immediate empty Result; all status is implicit via daemon logs.",
+      "root_cause": "Scaffold never implemented.",
+      "evidence": "Code read at a95bfe7.",
+      "user_impact": "Operators cannot read apply health from CRD; ops tooling gap.",
+      "regression_test_status": "not_applicable",
+      "deduplication_status": "partial_duplicate",
+      "confidence": "high",
+      "implementation_complexity": "high",
+      "contribution_category": "B"
+    },
+    {
+      "id": "KA-REL-005",
+      "title": "Local go test ./core fails without BPF code generation",
+      "component": "test infrastructure",
+      "category": "H",
+      "files": [
+        {"path": "KubeArmor/monitor/ima_hash_bpfel.go", "lines": "embed pattern"},
+        {"path": ".github/workflows/ci-test-go.yml", "lines": "130-136"}
+      ],
+      "expected_behavior": "Documented dev path: tests/core run after same steps as CI.",
+      "actual_behavior": "Fresh clone + go test ./core → setup failed missing probe_bpfel.o / llvm-strip.",
+      "root_cause": "go:embed BPF objects generated in CI, not in git.",
+      "evidence": "Command output on this VM 2026-11-26.",
+      "user_impact": "Contributor friction; false sense that core is untested locally.",
+      "regression_test_status": "n/a",
+      "deduplication_status": "documented_in_contributing",
+      "confidence": "high",
+      "implementation_complexity": "low",
+      "contribution_category": "A"
+    },
+    {
+      "id": "KA-REL-006",
+      "title": "Policy informer UpdateFunc may not insert missing policy",
+      "component": "core",
+      "category": "B",
+      "files": [
+        {"path": "KubeArmor/core/kubeUpdate.go", "lines": "2432-2446"}
+      ],
+      "expected_behavior": "Resync MODIFIED should upsert into dm.SecurityPolicies.",
+      "actual_behavior": "Reported: update only replaces existing index; missing entry not inserted.",
+      "root_cause": "Per #3015.",
+      "evidence": "Issue description; code structure matches update-only loop.",
+      "user_impact": "Stale or empty global policy list after resync edge cases.",
+      "regression_test_status": "not_run",
+      "deduplication_status": "known_unresolved",
+      "dedup_issue": "https://github.com/kubearmor/KubeArmor/issues/3015",
+      "confidence": "medium",
+      "implementation_complexity": "low",
+      "contribution_category": "B"
+    },
+    {
+      "id": "KA-REL-007",
+      "title": "PodRefresher lists all pods and sleeps in reconcile",
+      "component": "KubeArmorController",
+      "category": "B",
+      "files": [
+        {"path": "pkg/KubeArmorController/internal/controller/podrefresh_controller.go", "lines": "40-50,154,245"}
+      ],
+      "expected_behavior": "Per-request reconcile work bounded; use RequeueAfter not sleep.",
+      "actual_behavior": "Full cluster List each reconcile; time.Sleep(10s) and 5s in paths.",
+      "root_cause": "Global scan in namespaced reconciler.",
+      "evidence": "Code; issues #2800, #2798.",
+      "user_impact": "Controller worker blocking; slow annotation rollout at scale.",
+      "regression_test_status": "not_run",
+      "deduplication_status": "known_unresolved",
+      "dedup_issue": "https://github.com/kubearmor/KubeArmor/issues/2800",
+      "confidence": "high",
+      "implementation_complexity": "substantial",
+      "contribution_category": "B"
+    }
+  ]
+}
