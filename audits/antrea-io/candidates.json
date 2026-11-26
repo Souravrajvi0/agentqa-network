@@ -1,0 +1,50 @@
+{
+  "revision": "3aca3e73e6d5461146b748eb7e5a31c4b7576ee3",
+  "repository": "antrea-io/antrea",
+  "candidates": [
+    {
+      "id": "ANTREA-IPAM-001",
+      "title": "IPPool start/end ranges allocate the gateway address",
+      "status": "confirmed",
+      "class": "A",
+      "confidence": "high",
+      "component": "pkg/ipam/poolallocator",
+      "permanent": true
+    },
+    {
+      "id": "ANTREA-IPAM-002",
+      "title": "SecondaryNetworkAllocate assigns one IP from every same-family IPPool",
+      "status": "confirmed",
+      "class": "B",
+      "confidence": "high",
+      "component": "pkg/agent/cniserver/ipam",
+      "permanent": true
+    },
+    {
+      "id": "ANTREA-EIP-001",
+      "title": "ExternalIPPool CIDR allocates gateway",
+      "status": "rejected-duplicate",
+      "class": "A",
+      "confidence": "high",
+      "duplicateOf": ["https://github.com/antrea-io/antrea/issues/7868", "https://github.com/antrea-io/antrea/pull/8531"]
+    },
+    {
+      "id": "ANTREA-IPAM-003",
+      "title": "StatefulSet reserve/release does not update Usage in the same write",
+      "status": "rejected",
+      "reason": "Controller updateIPPoolCounters eventually patches usage; allocation uses ipAddresses, not Usage"
+    },
+    {
+      "id": "ANTREA-CNI-001",
+      "title": "CmdDel skips IPAM if removeInterfaces fails",
+      "status": "rejected",
+      "reason": "kubelet retries DEL; not shown to be a permanent leak when OVS recovers"
+    },
+    {
+      "id": "ANTREA-PCAP-001",
+      "title": "PacketCapture BPF vs tcpdump",
+      "status": "rejected-duplicate",
+      "duplicateOf": ["https://github.com/antrea-io/antrea/issues/7701"]
+    }
+  ]
+}
