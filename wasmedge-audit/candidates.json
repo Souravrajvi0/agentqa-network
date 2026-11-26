@@ -16,7 +16,7 @@
         "lib/executor/engine/threadInstr.cpp:40-42",
         "lib/llvm/compiler/threadInstr.cpp:356-357"
       ],
-      "upstream": "unreported"
+      "upstream": "https://github.com/WasmEdge/WasmEdge/issues/5669"
     },
     {
       "id": "WE-2",

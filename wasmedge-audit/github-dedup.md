@@ -6,9 +6,8 @@ Searches run 2026-11-26 against `WasmEdge/WasmEdge` (issues + PRs), plus `Change
 
 ### WE-1 `memory.atomic.fence` / `memory_order_release` / `runMemoryFenceOp`
 
-- Issues: `fence sequentially consistent OR memory.atomic.fence` → **0**
-- Code search hits only the implementation file
-- **Unreported**
+- Issues: `fence sequentially consistent OR memory.atomic.fence` → **0** (at audit time)
+- Filed from audit follow-up: **[#5669](https://github.com/WasmEdge/WasmEdge/issues/5669)**
 
 ### WE-2 `pathLink` / `path_link` NewNode
 
