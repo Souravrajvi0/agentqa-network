@@ -356,3 +356,24 @@ func TestRunnerGetChaosEngineWaitIsNanoseconds(t *testing.T) {
 		t.Fatalf("prod wait is %s", prod)
 	}
 }
+
+// listExperimentRunError mirrors chaoscenter ListExperimentRun lines 568-572.
+func listExperimentRunError(decodeErr error, workflowsLen int) (string, bool) {
+	if decodeErr != nil || workflowsLen == 0 {
+		if decodeErr == nil {
+			return "", true // would panic on err.Error() in upstream
+		}
+		return decodeErr.Error(), false
+	}
+	return "", false
+}
+
+func TestListExperimentRunEmptyResultHandling(t *testing.T) {
+	msg, wouldPanic := listExperimentRunError(nil, 0)
+	if !wouldPanic {
+		t.Fatal("empty successful decode must hit upstream bug branch")
+	}
+	if msg != "" {
+		t.Fatalf("unexpected msg %q", msg)
+	}
+}

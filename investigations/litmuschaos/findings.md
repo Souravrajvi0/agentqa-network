@@ -1,5 +1,9 @@
 # LitmusChaos Rank 2 — experiment lifecycle findings
 
+> Formal multi-pass deliverables: [`research/overview.md`](research/overview.md) (`findings.json`, dedup, mentorship).
+
+# LitmusChaos Rank 2 — experiment lifecycle findings
+
 Investigation of `litmuschaos/litmus` (ChaosCenter + subscriber) and execution
 siblings `chaos-operator`, `chaos-runner`, `litmus-go` (cloned at HEAD of each
 default branch, 2026-11-26). No production chaos was injected. Repros are
