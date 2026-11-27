@@ -11,6 +11,6 @@ Beta-length vs `check_model`: no issue reports `check_model()` returning True on
 | TabularCPD shape / super | Open [#3744](https://github.com/pgmpy/pgmpy/issues/3744) |
 | Adjustment.validate forbidden set | Open [#3553](https://github.com/pgmpy/pgmpy/issues/3553) |
 | FunctionalBN.copy | **No matching issue** |
-| Frontdoor first-pair only | **No matching issue** |
-| LGBN beta length vs check_model | **No matching issue** |
+| Frontdoor first-pair only | **Filed** [#3754](https://github.com/pgmpy/pgmpy/issues/3754) |
+| LGBN beta length vs check_model | **Filed** [#3753](https://github.com/pgmpy/pgmpy/issues/3753) |
 | SHD node sets | Closed [#2094](https://github.com/pgmpy/pgmpy/issues/2094); `reproductions/test_shd_unequal_nodes.py` — `ValueError` on unequal node sets |

@@ -22,7 +22,7 @@ Queries run against `antrea-io/antrea` (issues + PRs) on 2026-11-26. Revision `3
 | `SecondaryNetworkAllocate` / “at most one” IPAM | Primary-only comments and tests in `antrea_ipam.go` / `antrea_ipam_test.go`; no issue/PR for secondary skip |
 | Broader secondary IPAM issues | Unrelated (NAD, SR-IOV, VLAN) |
 
-**Verdict:** previously unreported relative to public issues/PRs searched.
+**Verdict:** **Filed** [#8672](https://github.com/antrea-io/antrea/issues/8672).
 
 ## Intentionally not filed
 

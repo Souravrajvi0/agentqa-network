@@ -6,8 +6,8 @@ Searched `repo:sktime/skpro` on 2026-11-26.
 
 | Audit ID | Search terms tried | Result |
 |----------|-------------------|--------|
-| SKPRO-BASE-001 | `surv haz tail`, `erfc cancellation` | No issue |
-| SKPRO-TRUNC-002 | `lower upper invalid truncation` | No issue |
+| SKPRO-BASE-001 | `surv haz tail`, `erfc cancellation` | **Filed** [#1256](https://github.com/sktime/skpro/issues/1256) |
+| SKPRO-TRUNC-002 | `lower upper invalid truncation` | **Filed** [#1257](https://github.com/sktime/skpro/issues/1257) |
 
 ## Matched to existing issues
 
